@@ -1,0 +1,10 @@
+REM This script is run after a build completes, intended for advanced customization of install dir.
+REM If the script exists, it will be called with the location of the built dll.
+
+REM Example implementation:
+
+@echo off
+
+set "target=%~1"
+
+copy /Y "%target%" "C:\Program Files (x86)\Steam\steamapps\common\Borderlands 3\OakGame\Binaries\Win64\Plugins\OpenHotfixLoader.dll"
