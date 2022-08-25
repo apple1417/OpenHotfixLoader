@@ -65,14 +65,39 @@ template JDict* JObject::cast(void);
 
 #pragma endregion
 
-JObject* JDict::get(std::wstring key) {
+#pragma region Accessors
+
+uint32_t JArray::count() {
+    return this->entries.count;
+}
+
+template <typename T>
+T* JArray::get(uint32_t idx) {
+    if (idx > this->count()) {
+        throw std::out_of_range("Array index out of range");
+    }
+    return this->entries.data[idx].obj->cast<T>();
+}
+
+template JString* JArray::get(uint32_t);
+template JArray* JArray::get(uint32_t);
+template JDict* JArray::get(uint32_t);
+
+template <typename T>
+T* JDict::get(std::wstring key) {
     for (auto i = 0; i < this->entries->count; i++) {
         auto entry = this->entries->data[i];
         if (entry.key_wstr() == key) {
-            return entry.value;
+            return entry.value->cast<T>();
         }
     }
     throw std::runtime_error("Couldn't find key " + wstring_converter.to_bytes(key));
 }
+
+template JString* JDict::get(std::wstring key);
+template JArray* JDict::get(std::wstring key);
+template JDict* JDict::get(std::wstring key);
+
+#pragma endregion
 
 }  // namespace ohl::jobject

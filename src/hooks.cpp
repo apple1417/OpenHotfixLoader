@@ -9,8 +9,6 @@ namespace ohl::hooks {
 #pragma region Handlers
 
 static void handle_discovery(TArray<JDictEntry>** json) {
-    std::cout << "[OHL] discovery called\n";
-
     auto main_entry = (*json)->data[0];
     auto main_key = main_entry.key_str();
     if (main_key != "services") {
@@ -18,10 +16,31 @@ static void handle_discovery(TArray<JDictEntry>** json) {
     }
     auto services = main_entry.value->cast<JArray>();
 
-    for (auto i = 0; i < services->entries.count; i++) {
-        auto service = services->entries.data[i].obj->cast<JDict>();
-        auto service_name = service->get(L"service_name")->cast<JString>()->to_str();
-        std::cout << "[OHL] Service: " << service_name << "\n";
+    JDict* micropatch = nullptr;
+
+    for (auto i = 0; i < services->count(); i++) {
+        auto service = services->get<JDict>(i);
+        auto service_name = service->get<JString>(L"service_name")->to_wstr();
+        if (service_name == L"Micropatch") {
+            micropatch = service;
+            break;
+        }
+    }
+
+    // This happens during the first verify call so don't throw
+    if (micropatch == nullptr) {
+        return;
+    }
+
+    std::cout << "[OHL] Found Hotfixes:\n";
+
+    auto params = micropatch->get<JArray>(L"parameters");
+    for (auto i = 0; i < params->count(); i++) {
+        auto hotfix = params->get<JDict>(i);
+        auto key = hotfix->get<JString>(L"key")->to_str();
+        auto value = hotfix->get<JString>(L"value")->to_str();
+
+        std::cout << "[OHL] " << key << "," << value << "\n";
     }
 }
 

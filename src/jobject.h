@@ -40,6 +40,11 @@ struct JArrayEntry {
 
 struct JArray : JObject {
     TArray<JArrayEntry> entries;
+
+    uint32_t count(void);
+
+    template <typename T>
+    T* get(uint32_t i);
 };
 
 struct JDictEntry {
@@ -56,7 +61,8 @@ struct JDictEntry {
 struct JDict : JObject {
     TArray<JDictEntry>* entries;
 
-    JObject* get(std::wstring key);
+    template <typename T>
+    T* get(std::wstring key);
 };
 
 }  // namespace ohl::jobject
