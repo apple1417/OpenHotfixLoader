@@ -6,8 +6,12 @@
 #include <MinHook.h>
 
 #ifdef __cplusplus
+#include <codecvt>
 #include <cstdint>
 #include <iostream>
+#include <locale>
+#include <stdexcept>
+#include <string>
 
 using std::int16_t;
 using std::int32_t;

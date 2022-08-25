@@ -1,11 +1,43 @@
 #include <pch.h>
 
+#include "jobject.h"
+
+using namespace ohl::jobject;
+
 namespace ohl::hooks {
 
-typedef bool (*discovery_from_json)(void* this_service, void* json);
+#pragma region Handlers
+
+static void handle_discovery(TArray<JDictEntry>** json) {
+    std::cout << "[OHL] discovery called\n";
+
+    auto main_entry = (*json)->data[0];
+    auto main_key = main_entry.key_str();
+    if (main_key != "services") {
+        throw std::runtime_error("Outermost key is invalid: " + main_key);
+    }
+    auto services = main_entry.value->cast<JArray>();
+
+    for (auto i = 0; i < services->entries.count; i++) {
+        auto service = services->entries.data[i].obj->cast<JDict>();
+        auto service_name = service->get(L"service_name")->cast<JString>()->to_str();
+        std::cout << "[OHL] Service: " << service_name << "\n";
+    }
+}
+
+#pragma endregion
+
+#pragma region API Hooking
+
+typedef bool (*discovery_from_json)(void* this_service, TArray<JDictEntry>** json);
 static discovery_from_json original_discovery_from_json = nullptr;
-bool detour_discovery_from_json(void* this_service, void* json) {
-    std::cout << "[OHL] discovery called";
+bool detour_discovery_from_json(void* this_service, TArray<JDictEntry>** json) {
+    try {
+        handle_discovery(json);
+    } catch (std::exception ex) {
+        std::cout << "[OHL] Exception occured in hook: " << ex.what() << "\n";
+    }
+
     return original_discovery_from_json(this_service, json);
 }
 
@@ -39,5 +71,7 @@ void init(void) {
 
     std::cout << "[OHL] Hooks injected successfully\n";
 }
+
+#pragma endregion
 
 }  // namespace ohl::hooks
