@@ -1,5 +1,5 @@
 .vs
-build
+out
 
 # User scripts with templates
 postbuild.bat
