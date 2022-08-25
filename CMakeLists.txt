@@ -20,7 +20,7 @@ target_compile_definitions(OpenHotfixLoader PRIVATE "$<$<CONFIG:DEBUG>:_DEBUG>")
 target_compile_definitions(OpenHotfixLoader PRIVATE "UNICODE" "_UNICODE")
 
 # The precompiled header must be defined AFTER the compile defines
-target_precompile_headers(OpenHotfixLoader PRIVATE "src/pch.cpp")
+target_precompile_headers(OpenHotfixLoader PUBLIC "src/pch.c" "src/pch.cpp")
 
 if(MSVC)
     # Enable Edit and Continue.

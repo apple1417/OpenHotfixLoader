@@ -1,12 +1,11 @@
-// dllmain.cpp : Defines the entry point for the DLL application.
-#include <iostream>
-#include "pch.h"
+#include <pch.h>
 
+#include "hooks.h"
 
-int executionThread() {
-    AllocConsole();
+int startup_thread() {
+    SetThreadDescription(GetCurrentThread(), L"OpenHotfixLoader");
 
-    std::cout << "HI ITS ME THE HELLO WORLD :)";
+    ohl::hooks::init();
 
     return 1;
 }
@@ -15,7 +14,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID) {
     switch (ul_reason_for_call) {
         case DLL_PROCESS_ATTACH:
             DisableThreadLibraryCalls(hModule);
-            CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)executionThread, NULL, NULL, NULL);
+            CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)startup_thread, NULL, NULL, NULL);
             break;
         case DLL_THREAD_ATTACH:
         case DLL_THREAD_DETACH:
