@@ -75,10 +75,17 @@ T* FJsonValueArray::get(uint32_t idx) {
     return this->entries.data[idx].obj->cast<T>();
 }
 
+const uint32_t FJsonObject::KNOWN_PATTERN[16] = {
+    0x00000003, 0x00000000, 0x00000000, 0x00000000,
+    0x00000000, 0x00000000, 0x00000002, 0x00000080,
+    0xFFFFFFFF, 0x00000000, 0x00000001, 0x00000000,
+    0x00000000, 0x00000000, 0x00000001, 0x00000000,
+};
+
 template <typename T>
 T* FJsonObject::get(std::wstring key) {
-    for (auto i = 0; i < this->values.entries.count; i++) {
-        auto entry = this->values.entries.data[i];
+    for (auto i = 0; i < this->entries.count; i++) {
+        auto entry = this->entries.data[i];
         if (entry.key.to_wstr() == key) {
             return entry.value.obj->cast<T>();
         }

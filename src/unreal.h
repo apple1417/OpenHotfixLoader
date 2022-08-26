@@ -16,19 +16,23 @@ struct FString : TArray<wchar_t> {
     std::string to_str(void);
 };
 
+struct FReferenceControllerBase {
+    void* vf_table;
+    int32_t ref_count;
+    int32_t weak_ref_count;
+    void* obj;
+};
+
 template <typename T>
 struct TSharedPtr {
     T* obj;
-    void* ref_count;
+    FReferenceControllerBase* ref_controller;
 };
 
 enum class EJson { None = 0, Null = 1, String = 2, Number = 3, Boolean = 4, Array = 5, Object = 6 };
 
 struct FJsonValue {
-   private:
-    virtual void dummy(void);
-
-   public:
+    void* vf_table;
     enum EJson type;
 
     template <typename T>
@@ -43,18 +47,15 @@ struct KeyValuePair {
     int32_t hash_idx;
 };
 
-template <typename K, typename V>
-struct TMap {
-    TArray<KeyValuePair<K, V>> entries;
-    void* allocation_flags;
-    int32_t first_free_idx;
-    int32_t num_free_idxes;
-    void* hash;
-    int32_t hash_size;
-};
+using JSONObjectEntry = KeyValuePair<FString, TSharedPtr<FJsonValue>>;
 
 struct FJsonObject {
-    TMap<FString, TSharedPtr<FJsonValue>> values;
+    static const uint32_t KNOWN_PATTERN[16];
+
+    TArray<JSONObjectEntry> entries;
+    uint32_t pattern[16];
+
+    static_assert(sizeof(KNOWN_PATTERN) == sizeof(pattern));
 
     template <typename T>
     T* get(std::wstring key);

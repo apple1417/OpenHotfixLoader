@@ -12,6 +12,9 @@
 #include <locale>
 #include <stdexcept>
 #include <string>
+#include <vector>
+#include <utility>
+#include <cwchar>
 
 using std::int16_t;
 using std::int32_t;
