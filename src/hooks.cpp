@@ -1,26 +1,21 @@
 #include <pch.h>
 
-#include "jobject.h"
+#include "unreal.h"
 
-using namespace ohl::jobject;
+using namespace ohl::unreal;
 
 namespace ohl::hooks {
 
 #pragma region Handlers
 
-static void handle_discovery(TArray<JDictEntry>** json) {
-    auto main_entry = (*json)->data[0];
-    auto main_key = main_entry.key_str();
-    if (main_key != "services") {
-        throw std::runtime_error("Outermost key is invalid: " + main_key);
-    }
-    auto services = main_entry.value->cast<JArray>();
+static void handle_discovery(FJsonObject** json) {
+    auto services = (*json)->get<FJsonValueArray>(L"services");
 
-    JDict* micropatch = nullptr;
+    FJsonObject* micropatch = nullptr;
 
     for (auto i = 0; i < services->count(); i++) {
-        auto service = services->get<JDict>(i);
-        auto service_name = service->get<JString>(L"service_name")->to_wstr();
+        auto service = services->get<FJsonValueObject>(i)->to_obj();
+        auto service_name = service->get<FJsonValueString>(L"service_name")->to_wstr();
         if (service_name == L"Micropatch") {
             micropatch = service;
             break;
@@ -34,11 +29,11 @@ static void handle_discovery(TArray<JDictEntry>** json) {
 
     std::cout << "[OHL] Found Hotfixes:\n";
 
-    auto params = micropatch->get<JArray>(L"parameters");
+    auto params = micropatch->get<FJsonValueArray>(L"parameters");
     for (auto i = 0; i < params->count(); i++) {
-        auto hotfix = params->get<JDict>(i);
-        auto key = hotfix->get<JString>(L"key")->to_str();
-        auto value = hotfix->get<JString>(L"value")->to_str();
+        auto hotfix = params->get<FJsonValueObject>(i)->to_obj();
+        auto key = hotfix->get<FJsonValueString>(L"key")->to_str();
+        auto value = hotfix->get<FJsonValueString>(L"value")->to_str();
 
         std::cout << "[OHL] " << key << "," << value << "\n";
     }
@@ -48,9 +43,9 @@ static void handle_discovery(TArray<JDictEntry>** json) {
 
 #pragma region API Hooking
 
-typedef bool (*discovery_from_json)(void* this_service, TArray<JDictEntry>** json);
+typedef bool (*discovery_from_json)(void* this_service, FJsonObject** json);
 static discovery_from_json original_discovery_from_json = nullptr;
-bool detour_discovery_from_json(void* this_service, TArray<JDictEntry>** json) {
+bool detour_discovery_from_json(void* this_service, FJsonObject** json) {
     try {
         handle_discovery(json);
     } catch (std::exception ex) {
