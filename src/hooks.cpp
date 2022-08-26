@@ -1,45 +1,11 @@
 #include <pch.h>
 
 #include "unreal.h"
+#include "processing.h"
 
-using namespace ohl::unreal;
+using ohl::unreal::FJsonObject;
 
 namespace ohl::hooks {
-
-#pragma region Handlers
-
-static void handle_discovery(FJsonObject** json) {
-    auto services = (*json)->get<FJsonValueArray>(L"services");
-
-    FJsonObject* micropatch = nullptr;
-
-    for (auto i = 0; i < services->count(); i++) {
-        auto service = services->get<FJsonValueObject>(i)->to_obj();
-        auto service_name = service->get<FJsonValueString>(L"service_name")->to_wstr();
-        if (service_name == L"Micropatch") {
-            micropatch = service;
-            break;
-        }
-    }
-
-    // This happens during the first verify call so don't throw
-    if (micropatch == nullptr) {
-        return;
-    }
-
-    std::cout << "[OHL] Found Hotfixes:\n";
-
-    auto params = micropatch->get<FJsonValueArray>(L"parameters");
-    for (auto i = 0; i < params->count(); i++) {
-        auto hotfix = params->get<FJsonValueObject>(i)->to_obj();
-        auto key = hotfix->get<FJsonValueString>(L"key")->to_str();
-        auto value = hotfix->get<FJsonValueString>(L"value")->to_str();
-
-        std::cout << "[OHL] " << key << "," << value << "\n";
-    }
-}
-
-#pragma endregion
 
 #pragma region API Hooking
 
@@ -47,7 +13,7 @@ typedef bool (*discovery_from_json)(void* this_service, FJsonObject** json);
 static discovery_from_json original_discovery_from_json = nullptr;
 bool detour_discovery_from_json(void* this_service, FJsonObject** json) {
     try {
-        handle_discovery(json);
+        ohl::processing::handle_discovery_from_json(json);
     } catch (std::exception ex) {
         std::cout << "[OHL] Exception occured in hook: " << ex.what() << "\n";
     }
