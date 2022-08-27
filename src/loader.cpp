@@ -57,7 +57,7 @@ void init(void) {
         std::wifstream mod_file{list_line};
         if (!mod_file.is_open()) {
             std::wcout << L"[OHL] Failed to open file '" << list_line << L"'!\n";
-            return;
+            continue;
         }
         mod_file.imbue(
             std::locale(std::locale::empty(), new std::codecvt<char16_t, char, std::mbstate_t>));

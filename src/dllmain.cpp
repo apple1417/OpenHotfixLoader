@@ -4,10 +4,14 @@
 #include "loader.h"
 
 int startup_thread() {
-    SetThreadDescription(GetCurrentThread(), L"OpenHotfixLoader");
+    try {
+        SetThreadDescription(GetCurrentThread(), L"OpenHotfixLoader");
 
-    ohl::hooks::init();
-    ohl::loader::init();
+        ohl::hooks::init();
+        ohl::loader::init();
+    } catch (std::exception ex) {
+        std::cout << "[OHL] Exception occured during initalization: " << ex.what() << "\n";
+    }
 
     return 1;
 }

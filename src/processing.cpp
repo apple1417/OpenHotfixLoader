@@ -245,6 +245,8 @@ void handle_news_from_json(ohl::unreal::FJsonObject** json) {
     news_data->entries.data[0].obj = create_json_value_object(news_obj);
     add_ref_counter(&news_data->entries.data[0], vf_table.shared_ptr_json_value);
     news_data->entries.count++;
+
+    std::cout << "[OHL] Injected News\n";
 }
 
 }  // namespace ohl::processing
