@@ -18,29 +18,6 @@ static std::wstring NEWS_HEADER = L"OHL: Loaded 1234 hotfixes";
 static std::wstring NEWS_BODY = L"Running mods:\nA\nB\nC";
 static const std::wstring NEWS_IMAGE = L"https://i.ytimg.com/vi/V4MF2s6MLxY/maxresdefault.jpg";
 
-static const uint32_t KNOWN_ONE_PATTERN[16] = {
-    0x00000001, 0x00000000, 0x00000000, 0x00000000,
-    0x00000000, 0x00000000, 0x00000001, 0x00000080,
-    0xFFFFFFFF, 0x00000000, 0x00000001, 0x00000000,
-    0x00000000, 0x00000000, 0x00000001, 0x00000000,
-};
-
-static const uint32_t KNOWN_TWO_PATTERN[16] = {
-    0x00000003, 0x00000000, 0x00000000, 0x00000000,
-    0x00000000, 0x00000000, 0x00000002, 0x00000080,
-    0xFFFFFFFF, 0x00000000, 0x00000001, 0x00000000,
-    0x00000000, 0x00000000, 0x00000001, 0x00000000,
-};
-
-static const uint32_t KNOWN_THREE_PATTERN[16] {
-    0x00000007, 0x00000000, 0x00000000, 0x00000000,
-    0x00000000, 0x00000000, 0x00000003, 0x00000080,
-    0xFFFFFFFF, 0x00000000, 0x00000002, 0x00000000,
-    0x00000000, 0x00000000, 0x00000001, 0x00000000,
-};
-
-static_assert(sizeof(KNOWN_TWO_PATTERN) == sizeof(FJsonObject::pattern));
-
 struct vf_tables {
     bool found;
     void* json_value_string;
@@ -72,14 +49,6 @@ static void gather_vf_tables(FJsonObject* discovery_json) {
     vf_table.found = true;
 }
 
-static void alloc_string(FString* str, std::wstring value) {
-    str->count = value.size() + 1;
-    str->max = str->count;
-    str->data = ohl::hooks::malloc<wchar_t>(str->count * sizeof(wchar_t));
-    wcsncpy(str->data, value.c_str(), str->count - 1);
-    str->data[str->count - 1] = '\0';
-}
-
 template <typename T>
 static void add_ref_counter(TSharedPtr<T>* ptr, void* vf_table) {
     ptr->ref_controller =
@@ -88,6 +57,82 @@ static void add_ref_counter(TSharedPtr<T>* ptr, void* vf_table) {
     ptr->ref_controller->ref_count = 1;
     ptr->ref_controller->weak_ref_count = 1;
     ptr->ref_controller->obj = ptr->obj;
+}
+
+static void alloc_string(FString* str, std::wstring value) {
+    str->count = value.size() + 1;
+    str->max = str->count;
+    str->data = ohl::hooks::malloc<wchar_t>(str->count * sizeof(wchar_t));
+    wcsncpy(str->data, value.c_str(), str->count - 1);
+    str->data[str->count - 1] = '\0';
+}
+
+static FJsonValueString* create_json_string(std::wstring value) {
+    auto obj = ohl::hooks::malloc<FJsonValueString>(sizeof(FJsonValueString));
+    obj->vf_table = vf_table.json_value_string;
+    obj->type = EJson::String;
+    alloc_string(&obj->str, value);
+
+    return obj;
+}
+
+// clang-format off
+static const uint32_t KNOWN_OBJECT_PATTERNS[3][16] = {{
+    // Objects of size 1
+    0x00000001, 0x00000000, 0x00000000, 0x00000000,
+    0x00000000, 0x00000000, 0x00000001, 0x00000080,
+    0xFFFFFFFF, 0x00000000, 0x00000001, 0x00000000,
+    0x00000000, 0x00000000, 0x00000001, 0x00000000,
+}, {
+    // Objects of size 2
+    0x00000003, 0x00000000, 0x00000000, 0x00000000,
+    0x00000000, 0x00000000, 0x00000002, 0x00000080,
+    0xFFFFFFFF, 0x00000000, 0x00000001, 0x00000000,
+    0x00000000, 0x00000000, 0x00000001, 0x00000000,
+}, {
+    // Objects of size 3
+    0x00000007, 0x00000000, 0x00000000, 0x00000000,
+    0x00000000, 0x00000000, 0x00000003, 0x00000080,
+    0xFFFFFFFF, 0x00000000, 0x00000002, 0x00000000,
+    0x00000000, 0x00000000, 0x00000001, 0x00000000,
+}};
+// clang-format on
+
+static_assert(sizeof(*KNOWN_OBJECT_PATTERNS) == sizeof(FJsonObject::pattern));
+
+template <size_t n>
+static FJsonObject* create_json_object(
+    std::array<std::pair<std::wstring, FJsonValue*>, n> entries) {
+    static_assert(0 < n && n <= ARRAYSIZE(KNOWN_OBJECT_PATTERNS));
+
+    auto obj = ohl::hooks::malloc<FJsonObject>(sizeof(FJsonObject));
+    memcpy(obj->pattern, KNOWN_OBJECT_PATTERNS[n - 1], sizeof(obj->pattern));
+
+    obj->entries.count = n;
+    obj->entries.max = n;
+    obj->entries.data = ohl::hooks::malloc<JSONObjectEntry>(n * sizeof(JSONObjectEntry));
+
+    for (auto i = 0; i < n; i++) {
+        obj->entries.data[i].hash_next_id = ((int32_t)i) - 1;
+
+        alloc_string(&obj->entries.data[i].key, entries[i].first);
+
+        obj->entries.data[i].value.obj = entries[i].second;
+        add_ref_counter(&obj->entries.data[i].value, vf_table.shared_ptr_json_value);
+    }
+
+    return obj;
+}
+
+static FJsonValueObject* create_json_value_object(FJsonObject* obj) {
+    auto val_obj = ohl::hooks::malloc<FJsonValueObject>(sizeof(FJsonValueObject));
+    val_obj->vf_table = vf_table.json_value_object;
+    val_obj->type = EJson::Object;
+
+    val_obj->value.obj = obj;
+    add_ref_counter(&val_obj->value, vf_table.shared_ptr_json_object);
+
+    return val_obj;
 }
 
 void handle_discovery_from_json(FJsonObject** json) {
@@ -124,43 +169,12 @@ void handle_discovery_from_json(FJsonObject** json) {
 
     auto i = params->entries.count;
     for (const auto& [key, hotfix] : INJECTED_HOTFIXES) {
-        auto val_obj = ohl::hooks::malloc<FJsonValueObject>(sizeof(FJsonValueObject));
-        val_obj->vf_table = vf_table.json_value_object;
-        val_obj->type = EJson::Object;
+        auto hotfix_entry = create_json_object<2>(
+            {{{L"key", create_json_string(key)}, {L"value", create_json_string(hotfix)}}});
 
-        params->entries.data[i].obj = val_obj;
+        params->entries.data[i].obj = create_json_value_object(hotfix_entry);
         add_ref_counter(&params->entries.data[i], vf_table.shared_ptr_json_value);
         i++;
-
-        auto main_obj = ohl::hooks::malloc<FJsonObject>(sizeof(FJsonObject));
-        memcpy(main_obj->pattern, KNOWN_TWO_PATTERN, sizeof(KNOWN_TWO_PATTERN));
-        main_obj->entries.count = 2;
-        main_obj->entries.max = main_obj->entries.count;
-        main_obj->entries.data =
-            ohl::hooks::malloc<JSONObjectEntry>(main_obj->entries.count * sizeof(JSONObjectEntry));
-
-        val_obj->value.obj = main_obj;
-        add_ref_counter(&val_obj->value, vf_table.shared_ptr_json_object);
-
-        auto key_obj = ohl::hooks::malloc<FJsonValueString>(sizeof(FJsonValueString));
-        key_obj->vf_table = vf_table.json_value_string;
-        key_obj->type = EJson::String;
-        alloc_string(&key_obj->str, key);
-
-        alloc_string(&main_obj->entries.data[0].key, L"key");
-        main_obj->entries.data[0].value.obj = key_obj;
-        add_ref_counter(&main_obj->entries.data[0].value, vf_table.shared_ptr_json_value);
-        main_obj->entries.data[0].hash_next_id = -1;
-
-        auto hotfix_obj = ohl::hooks::malloc<FJsonValueString>(sizeof(FJsonValueString));
-        hotfix_obj->vf_table = vf_table.json_value_string;
-        hotfix_obj->type = EJson::String;
-        alloc_string(&hotfix_obj->str, hotfix);
-
-        alloc_string(&main_obj->entries.data[1].key, L"value");
-        main_obj->entries.data[1].value.obj = hotfix_obj;
-        add_ref_counter(&main_obj->entries.data[1].value, vf_table.shared_ptr_json_value);
-        main_obj->entries.data[0].hash_next_id = 0;
     }
 
     params->entries.count = new_hotfix_count;
@@ -168,7 +182,6 @@ void handle_discovery_from_json(FJsonObject** json) {
     std::cout << "[OHL] Injected Hotfixes\n";
 }
 
-void handle_news_from_json(ohl::unreal::FJsonObject**) {
-    
-}
+void handle_news_from_json(ohl::unreal::FJsonObject**) {}
+
 }  // namespace ohl::processing

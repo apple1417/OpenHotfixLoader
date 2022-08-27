@@ -6,15 +6,17 @@
 #include <MinHook.h>
 
 #ifdef __cplusplus
+#include <array>
 #include <codecvt>
 #include <cstdint>
+#include <cwchar>
 #include <iostream>
 #include <locale>
 #include <stdexcept>
 #include <string>
-#include <vector>
 #include <utility>
-#include <cwchar>
+#include <vector>
+
 
 using std::int16_t;
 using std::int32_t;
