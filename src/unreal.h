@@ -50,12 +50,8 @@ struct KeyValuePair {
 using JSONObjectEntry = KeyValuePair<FString, TSharedPtr<FJsonValue>>;
 
 struct FJsonObject {
-    static const uint32_t KNOWN_PATTERN[16];
-
     TArray<JSONObjectEntry> entries;
     uint32_t pattern[16];
-
-    static_assert(sizeof(KNOWN_PATTERN) == sizeof(pattern));
 
     template <typename T>
     T* get(std::wstring key);
