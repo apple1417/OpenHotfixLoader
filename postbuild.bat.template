@@ -6,5 +6,14 @@ REM Example implementation:
 @echo off
 
 set "target=%~1"
+set "filename=%~nx1"
 
-copy /Y "%target%" "C:\Program Files (x86)\Steam\steamapps\common\Borderlands 3\OakGame\Binaries\Win64\Plugins\OpenHotfixLoader.dll"
+set "PLUGINS_FOLDER=C:\Program Files (x86)\Steam\steamapps\common\Borderlands 3\OakGame\Binaries\Win64\Plugins"
+
+for %%n in (OpenHotfixLoader.dll OpenHotfixLoader-Debug.dll) do (
+    if exist "%PLUGINS_FOLDER%\%%n" (
+        del "%PLUGINS_FOLDER%\%%n"
+    )
+)
+
+copy /Y "%target%" "%PLUGINS_FOLDER%\%filename%"

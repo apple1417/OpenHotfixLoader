@@ -3,15 +3,20 @@
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-project(OpenHotfixLoader)
+project(OpenHotfixLoader VERSION 0.1.0)
+set(PROJECT_VERSION_PREFIX "b")
+set(CMAKE_DEBUG_POSTFIX "-Debug")
 
 add_subdirectory(minhook)
+
+configure_file(versioninfo.rc.in versioninfo.rc)
+configure_file(src/version.h.in inc/version.h)
 
 file(GLOB_RECURSE sources CONFIGURE_DEPENDS "src/*.c" "src/*.cpp" "src/*.h" "src/*.hpp")
 
 # Can't use pybind11_add_module cause Visual Studio won't let you debug it
-add_library(OpenHotfixLoader SHARED ${sources})
-target_include_directories(OpenHotfixLoader PRIVATE "src")
+add_library(OpenHotfixLoader SHARED ${sources} "${CMAKE_CURRENT_BINARY_DIR}/versioninfo.rc")
+target_include_directories(OpenHotfixLoader PRIVATE "${PROJECT_BINARY_DIR}/inc" "src")
 
 target_link_libraries(OpenHotfixLoader PUBLIC minhook)
 

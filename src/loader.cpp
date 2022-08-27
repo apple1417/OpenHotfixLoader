@@ -1,5 +1,7 @@
 #include <pch.h>
 
+#include "version.h"
+
 namespace ohl::loader {
 
 static std::wstring get_formatted_name(void);
@@ -11,19 +13,24 @@ static std::wstring news_header = get_formatted_name() + L": No hotfixes injecte
 static std::wstring news_body = L"";
 static std::vector<std::pair<std::wstring, std::wstring>> hotfixes{};
 
+static std::wstring exe_path = L"";
+
 static std::wstring get_formatted_name(void) {
     // If we're in BL3, colour the name.
     // WL doesn't support font tags :(
-    wchar_t buf[256];
-    auto res = GetModuleFileName(NULL, buf, sizeof(buf));
-    if (res && std::filesystem::path(std::wstring(buf)).stem() == "Borderlands3") {
-        return L"<font color='#0080E0'>OHL</font>";
+    if (std::filesystem::path(exe_path).stem() == "Borderlands3") {
+        return L"<font color='#0080E0'>OHL</font><font size='14' color='#C0C0C0'> " VERSION_STRING "</font>";
     }
 
-    return L"OHL";
+    return L"OHL " VERSION_STRING;
 }
 
 void init(void) {
+    wchar_t buf[FILENAME_MAX];
+    if (GetModuleFileName(NULL, buf, sizeof(buf))) {
+        exe_path = std::wstring(buf);
+    }
+
     if (!std::filesystem::exists(MOD_LIST_FILE)) {
         std::ofstream modlist{MOD_LIST_FILE};
         modlist << "# OpenHotfixLoader Mod List\n";
