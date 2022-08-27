@@ -81,7 +81,7 @@ static const uint32_t KNOWN_OBJECT_PATTERNS[3][16] = {{
     // Objects of size 1
     0x00000001, 0x00000000, 0x00000000, 0x00000000,
     0x00000000, 0x00000000, 0x00000001, 0x00000080,
-    0xFFFFFFFF, 0x00000000, 0x00000001, 0x00000000,
+    0xFFFFFFFF, 0x00000000, 0x00000000, 0x00000000,
     0x00000000, 0x00000000, 0x00000001, 0x00000000,
 }, {
     // Objects of size 2
@@ -119,6 +119,25 @@ static FJsonObject* create_json_object(
 
         obj->entries.data[i].value.obj = entries[i].second;
         add_ref_counter(&obj->entries.data[i].value, vf_table.shared_ptr_json_value);
+    }
+
+    return obj;
+}
+
+static FJsonValueArray* create_json_array(std::vector<FJsonValue*> entries) {
+    auto obj = ohl::hooks::malloc<FJsonValueArray>(sizeof(FJsonValueArray));
+    obj->vf_table = vf_table.json_value_array;
+    obj->type = EJson::Array;
+
+    const auto n = entries.size();
+
+    obj->entries.count = n;
+    obj->entries.max = n;
+    obj->entries.data = ohl::hooks::malloc<TSharedPtr<FJsonValue>>(n * sizeof(TSharedPtr<FJsonValue>));
+
+    for (auto i = 0; i < n; i++) {
+        obj->entries.data[i].obj = entries[i];
+        add_ref_counter(&obj->entries.data[i], vf_table.shared_ptr_json_value);
     }
 
     return obj;
@@ -182,6 +201,51 @@ void handle_discovery_from_json(FJsonObject** json) {
     std::cout << "[OHL] Injected Hotfixes\n";
 }
 
-void handle_news_from_json(ohl::unreal::FJsonObject**) {}
+static std::wstring get_time_str(void) {
+    auto time = std::time(nullptr);
+    auto utc = std::gmtime(&time);
+
+    // Only need 25 but let's be safe
+    wchar_t buf[64] = {};
+    wcsftime(buf, sizeof(buf), L"%FT%T.000Z", utc);
+
+    return std::wstring(buf);
+}
+
+void handle_news_from_json(ohl::unreal::FJsonObject** json) {
+    if (!vf_table.found) {
+        throw std::runtime_error("Didn't find vf tables in time!");
+    }
+
+    auto news_data = (*json)->get<FJsonValueArray>(L"data");
+
+    if (news_data->entries.count + 1 > news_data->entries.max) {
+        news_data->entries.max = news_data->entries.count + 1;
+        news_data->entries.data = ohl::hooks::realloc<TSharedPtr<FJsonValue>>(
+            news_data->entries.data, news_data->entries.max * sizeof(TSharedPtr<FJsonValue>));
+    }
+
+    auto contents_obj = create_json_object<2>(
+        {{{L"header", create_json_string(NEWS_HEADER)}, {L"body", create_json_string(NEWS_BODY)}}});
+    auto contents_arr = create_json_array({create_json_value_object(contents_obj)});
+
+    auto meta_tag_obj =
+        create_json_object<1>({{{L"tag", create_json_string(L"img_game_sm_noloc")}}});
+    auto tags_obj = create_json_object<2>({{{L"meta_tag", create_json_value_object(meta_tag_obj)},
+                                            {L"value", create_json_string(NEWS_IMAGE)}}});
+    auto tags_arr = create_json_array({create_json_value_object(tags_obj)});
+
+    auto availablities_obj =
+        create_json_object<1>({{{L"startTime", create_json_string(get_time_str())}}});
+    auto availabilities_arr = create_json_array({create_json_value_object(availablities_obj)});
+
+    auto news_obj = create_json_object<3>({{{L"contents", contents_arr},
+                                            {L"article_tags", tags_arr},
+                                            {L"availabilities", availabilities_arr}}});
+
+    news_data->entries.data[news_data->entries.count].obj = create_json_value_object(news_obj);
+    add_ref_counter(&news_data->entries.data[news_data->entries.count], vf_table.shared_ptr_json_value);
+    news_data->entries.count++;
+}
 
 }  // namespace ohl::processing
