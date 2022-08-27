@@ -10,13 +10,17 @@
 #include <codecvt>
 #include <cstdint>
 #include <cwchar>
+#include <deque>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <locale>
+#include <map>
+#include <set>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 

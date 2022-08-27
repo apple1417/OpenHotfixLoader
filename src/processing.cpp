@@ -170,6 +170,7 @@ void handle_discovery_from_json(FJsonObject** json) {
         throw std::runtime_error("Didn't find vf tables in time!");
     }
 
+    ohl::loader::reload_hotfixes();
     auto hotfixes = ohl::loader::get_hotfixes();
 
     auto params = micropatch->get<FJsonValueArray>(L"parameters");
@@ -219,9 +220,9 @@ void handle_news_from_json(ohl::unreal::FJsonObject** json) {
             news_data->entries.data, news_data->entries.max * sizeof(TSharedPtr<FJsonValue>));
     }
 
-    auto contents_obj =
-        create_json_object<2>({{{L"header", create_json_string(ohl::loader::get_news_header())},
-                                {L"body", create_json_string(ohl::loader::get_news_body())}}});
+    auto contents_obj = create_json_object<2>(
+        {{{L"header", create_json_string(ohl::loader::get_news_header())},
+          {L"body", create_json_string(ohl::loader::get_loaded_mods_str())}}});
     auto contents_arr = create_json_array({create_json_value_object(contents_obj)});
 
     auto meta_tag_obj =

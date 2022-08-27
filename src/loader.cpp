@@ -1,116 +1,253 @@
 #include <pch.h>
 
+#include "loader.h"
 #include "version.h"
+
+using file_modify_list =
+    std::map<std::filesystem::path, std::filesystem::file_time_type>;
 
 namespace ohl::loader {
 
-static std::wstring get_formatted_name(void);
-
-static const std::string MOD_LIST_FILE = "modlist.txt";
 static const int HOTFIX_COUNTER_OFFSET = 10000;
+static const std::wstring TYPE_11_PREFIX = L"SparkEarlyLevelPatchEntry,(1,11,0,";
+static const std::wstring TYPE_11_DELAY =
+    L"(1,1,0,{map}),/Game/Pickups/Ammo/"
+    L"BPAmmoItem_Pistol.Default__BPAmmoItem_Pistol_C,ItemMeshComponent.Object..StaticMesh,0,,"
+    L"StaticMesh'\"{mesh}\"'";
+static const std::vector<std::wstring> TYPE_11_DELAY_MESHES = {
+    L"/Engine/EditorMeshes/Camera/SM_CraneRig_Arm.SM_CraneRig_Arm",
+    L"/Engine/EditorMeshes/Camera/SM_CraneRig_Base.SM_CraneRig_Base",
+    L"/Engine/EditorMeshes/Camera/SM_CraneRig_Body.SM_CraneRig_Body",
+    L"/Engine/EditorMeshes/Camera/SM_CraneRig_Mount.SM_CraneRig_Mount",
+    L"/Engine/EditorMeshes/Camera/SM_RailRig_Mount.SM_RailRig_Mount",
+    L"/Engine/EditorMeshes/Camera/SM_RailRig_Track.SM_RailRig_Track",
+    L"/Game/Pickups/Ammo/Model/Meshes/SM_ammo_pistol.SM_ammo_pistol",
+};
 
-static std::wstring news_header = get_formatted_name() + L": No hotfixes injected";
-static std::wstring news_body = L"";
-static std::vector<std::pair<std::wstring, std::wstring>> hotfixes{};
+// Use defaults which will work relative to the cwd
+// We will try replace these later
+static std::filesystem::path exe_path = "";
+static std::filesystem::path mod_dir = "ohl-mods";
 
-static std::wstring exe_path = L"";
+static hotfix_list injected_hotfixes{};
+static file_modify_list hotfix_write_times{};
 
+/**
+ * @brief Get a string holding our name + version.
+ * @note May format the string depending on game.
+ *
+ * @return The OHL name + version string.
+ */
 static std::wstring get_formatted_name(void) {
     // If we're in BL3, colour the name.
     // WL doesn't support font tags :(
-    if (std::filesystem::path(exe_path).stem() == "Borderlands3") {
-        return L"<font color='#0080E0'>OHL</font><font size='14' color='#C0C0C0'> " VERSION_STRING "</font>";
+    if (exe_path.stem() == "Borderlands3") {
+        return L"<font color='#0080E0'>OHL</font><font size='14' color='#C0C0C0'> " VERSION_STRING
+               "</font>";
     }
 
     return L"OHL " VERSION_STRING;
 }
 
-void init(void) {
+/**
+ * @brief Loads all hotfixes in a mod file.
+ *
+ * @param path Path to the file.
+ * @param hotfixes A list of hotfixes.
+ * @param type_11_hotfixes A list of type 11 hotfixes.
+ * @param type_11_maps A set of maps on which type 11 hotfixes exist.
+ */
+static void load_mod_file(const std::filesystem::path& path,
+                          hotfix_list& hotfixes,
+                          hotfix_list& type_11_hotfixes,
+                          std::unordered_set<std::wstring>& type_11_maps) {
+    std::wifstream mod_file{path};
+    if (!mod_file.is_open()) {
+        std::wcout << L"[OHL] Failed to open file '" << path << L"'!\n";
+        return;
+    }
+    mod_file.imbue(
+        std::locale(std::locale::empty(), new std::codecvt<wchar_t, char, std::mbstate_t>));
+
+    for (std::wstring mod_line; std::getline(mod_file, mod_line);) {
+        if (mod_line.rfind(L"Spark") != 0) {
+            continue;
+        }
+
+        auto hotfix_type_end_pos = mod_line.find_first_of(',');
+        if (hotfix_type_end_pos == std::wstring::npos) {
+            continue;
+        }
+
+        auto hotfix_type = mod_line.substr(0, hotfix_type_end_pos) +
+                           std::to_wstring(hotfixes.size() + HOTFIX_COUNTER_OFFSET);
+        auto hotfix = mod_line.substr(hotfix_type_end_pos + 1);
+
+        if (mod_line.rfind(TYPE_11_PREFIX) == 0) {
+            auto map_end_pos = mod_line.find_first_of(')');
+            if (map_end_pos != std::string::npos) {
+                auto map =
+                    mod_line.substr(TYPE_11_PREFIX.size(), map_end_pos - TYPE_11_PREFIX.size());
+                type_11_maps.insert(map);
+                type_11_hotfixes.push_back({hotfix_type, hotfix});
+                continue;
+            }
+        }
+
+        hotfixes.push_back({hotfix_type, hotfix});
+    }
+}
+
+/**
+ * @brief Loads all hotfixes in a directory.
+ *
+ * @param path Path to the directory.
+ * @param loaded_files A set of files which have been loaded.
+ * @param hotfixes A list of hotfixes.
+ * @param type_11_hotfixes A list of type 11 hotfixes.
+ * @param type_11_maps A set of maps on which type 11 hotfixes exist.
+ * @return True if any hotfixes were loaded, false otherwise
+ */
+static void load_mod_dir(const std::filesystem::path& path,
+                         std::set<std::wstring>& loaded_files,
+                         hotfix_list& hotfixes,
+                         hotfix_list& type_11_hotfixes,
+                         std::unordered_set<std::wstring>& type_11_maps) {
+    // `directory_iterator` doesn't guarentee any order, so need to do an inital pass before sorting
+    std::vector<std::filesystem::path> mod_files{};
+    for (const auto& dir_entry : std::filesystem::directory_iterator{path}) {
+        if (dir_entry.is_directory()) {
+            continue;
+        }
+        mod_files.push_back(dir_entry.path());
+    }
+    std::sort(mod_files.begin(), mod_files.end());
+
+    for (const auto& file : mod_files) {
+        if (loaded_files.count(file) > 0) {
+            continue;
+        }
+        load_mod_file(file, hotfixes, type_11_hotfixes, type_11_maps);
+        loaded_files.insert(file);
+    }
+}
+
+void reload_hotfixes(void) {
+    // If the mod folder doesn't exist, create it, and then just quit early since we know we won't
+    //  load anything
+    if (!std::filesystem::exists(mod_dir)) {
+        std::filesystem::create_directories(mod_dir);
+        return;
+    }
+
+    // Cache a set of last modify times, and only actually reload when a file gets updated.
+    if (hotfix_write_times.size() > 0) {
+        // Last write time doesn't update on new/deleted files in a dir, so check by grabbing a list
+        std::set<std::filesystem::path> current_file_list{};
+        for (const auto& dir_entry : std::filesystem::directory_iterator{mod_dir}) {
+            if (dir_entry.is_directory()) {
+                continue;
+            }
+            current_file_list.insert(dir_entry.path());
+        }
+
+        bool any_modified = false;
+        for (const auto& [file, last_time] : hotfix_write_times) {
+            // If we fail to erase, the file got deleted
+            if (current_file_list.erase(file) == 0) {
+                any_modified = true;
+                break;
+            }
+            if (std::filesystem::last_write_time(file) > last_time) {
+                any_modified = true;
+                break;
+            }
+        }
+        if (!any_modified && current_file_list.size() == 0) {
+            return;
+        }
+    }
+
+    std::set<std::wstring> loaded_files{};
+    hotfix_list new_hotfixes{};
+    hotfix_list type_11_hotfixes{};
+    std::unordered_set<std::wstring> type_11_maps{};
+
+    load_mod_dir(mod_dir, loaded_files, new_hotfixes, type_11_hotfixes, type_11_maps);
+
+    // Add type 11s to the front of the list, and their delays after them but before the rest
+    for (const auto& map : type_11_maps) {
+        static const auto map_start_pos = TYPE_11_DELAY.find(L"{map}");
+        static const auto map_length = 5;
+        static const auto mesh_start_pos = TYPE_11_DELAY.find(L"{mesh}");
+        static const auto mesh_length = 6;
+
+        for (const auto& mesh : TYPE_11_DELAY_MESHES) {
+            type_11_hotfixes.push_back(
+                {L"SparkEarlyLevelPatchEntry", std::wstring(TYPE_11_DELAY)
+                                                   .replace(map_start_pos, map_length, map)
+                                                   .replace(mesh_start_pos, mesh_length, mesh)});
+        }
+    }
+    for (auto it = type_11_hotfixes.rbegin(); it != type_11_hotfixes.rend(); it++) {
+        new_hotfixes.push_front(*it);
+    }
+
+    file_modify_list new_modify_times{};
+    for (const auto& file : loaded_files) {
+        new_modify_times[file] = std::filesystem::last_write_time(file);
+    }
+
+    injected_hotfixes = new_hotfixes;
+    hotfix_write_times = new_modify_times;
+}
+
+void init(HMODULE this_module) {
     wchar_t buf[FILENAME_MAX];
     if (GetModuleFileName(NULL, buf, sizeof(buf))) {
-        exe_path = std::wstring(buf);
+        exe_path = std::filesystem::path(std::wstring(buf));
+    }
+    if (GetModuleFileName(this_module, buf, sizeof(buf))) {
+        mod_dir = std::filesystem::path(std::wstring(buf)).remove_filename() / mod_dir;
     }
 
-    if (!std::filesystem::exists(MOD_LIST_FILE)) {
-        std::ofstream modlist{MOD_LIST_FILE};
-        modlist << "# OpenHotfixLoader Mod List\n";
-        modlist << "# Add paths to the mod files you want to load here, one per line.\n";
-        modlist << "# Lines starting with a '#' are comments and are ignored.\n";
-        modlist.close();
-        return;
-    }
+    reload_hotfixes();
 
-    std::wifstream modlist{MOD_LIST_FILE};
-    if (!modlist.is_open()) {
-        std::cout << "[OHL] Failed to open file '" << MOD_LIST_FILE << "'!\n";
-        return;
-    }
-    modlist.imbue(
-        std::locale(std::locale::empty(), new std::codecvt<char16_t, char, std::mbstate_t>));
-
-    std::wstringstream body_msg{};
-    bool has_any_hotfixes = false;
-    hotfixes.clear();
-
-    for (std::wstring list_line; std::getline(modlist, list_line);) {
-        if (std::all_of(list_line.begin(), list_line.end(), isspace)) {
-            continue;
-        }
-
-        if (list_line[0] == '#') {
-            continue;
-        }
-
-        std::wifstream mod_file{list_line};
-        if (!mod_file.is_open()) {
-            std::wcout << L"[OHL] Failed to open file '" << list_line << L"'!\n";
-            continue;
-        }
-        mod_file.imbue(
-            std::locale(std::locale::empty(), new std::codecvt<char16_t, char, std::mbstate_t>));
-
-        bool mod_has_hotfixes = false;
-        for (std::wstring mod_line; std::getline(mod_file, mod_line);) {
-            if (mod_line.rfind(L"Spark") != 0) {
-                continue;
-            }
-
-            auto hotfix_type_end_pos = mod_line.find_first_of(',');
-            if (hotfix_type_end_pos == std::wstring::npos) {
-                continue;
-            }
-
-            has_any_hotfixes = true;
-            mod_has_hotfixes = true;
-
-            auto hotfix_type = mod_line.substr(0, hotfix_type_end_pos) +
-                               std::to_wstring(hotfixes.size() + HOTFIX_COUNTER_OFFSET);
-            auto hotfix = mod_line.substr(hotfix_type_end_pos + 1);
-
-            hotfixes.push_back({hotfix_type, hotfix});
-        }
-
-        if (mod_has_hotfixes) {
-            body_msg << list_line << L"\n";
-        }
-    }
-
-    if (has_any_hotfixes) {
-        news_body = L"Running Mods:\n" + body_msg.str();
-        news_header =
-            get_formatted_name() + L": " + std::to_wstring(hotfixes.size()) + L" hotfixes loaded";
-        std::wcout << L"[OHL] " << news_body;
-    }
+    std::wcout << L"[OHL] " << get_loaded_mods_str() << "\n";
 }
 
-std::vector<std::pair<std::wstring, std::wstring>> get_hotfixes(void) {
+hotfix_list get_hotfixes(void) {
+    // Return a copy
+    hotfix_list hotfixes;
+    hotfixes = injected_hotfixes;
     return hotfixes;
 }
+
 std::wstring get_news_header(void) {
-    return news_header;
+    auto size = injected_hotfixes.size();
+    if (size > 0) {
+        return get_formatted_name() + L": " + std::to_wstring(size) + L" hotfixes loaded";
+    } else {
+        return get_formatted_name() + L": No hotfixes loaded";
+    }
 }
-std::wstring get_news_body(void) {
-    return news_body;
+
+std::wstring get_loaded_mods_str(void) {
+    if (injected_hotfixes.size() == 0) {
+        return L"No hotfixes loaded";
+    }
+
+    std::wstringstream stream{};
+    stream << L"Loaded files:\n";
+    for (const auto& [file, _] : hotfix_write_times) {
+        if (file.parent_path() != mod_dir) {
+            stream << file.wstring() << L"\n";
+        } else {
+            stream << file.filename().wstring() << L"\n";
+        }
+    }
+
+    return stream.str();
 }
 
 }  // namespace ohl::loader
