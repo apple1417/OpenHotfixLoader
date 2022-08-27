@@ -1,7 +1,7 @@
 #include <pch.h>
 
-#include "unreal.h"
 #include "processing.h"
+#include "unreal.h"
 
 using ohl::unreal::FJsonObject;
 
@@ -26,9 +26,9 @@ static discovery_from_json* get_discovery_from_json(void) {
     return reinterpret_cast<discovery_from_json*>(base_addr + 0x2B0F300);
 }
 
-static news_from_json * get_news_from_json(void) {
+static news_from_json get_news_from_json(void) {
     auto base_addr = reinterpret_cast<uintptr_t>(GetModuleHandle(NULL));
-    return reinterpret_cast<discovery_from_json*>(base_addr + 0x2B224B0);
+    return reinterpret_cast<news_from_json>(base_addr + 0x2B224B0);
 }
 
 static fmemory_malloc get_fememory_malloc() {

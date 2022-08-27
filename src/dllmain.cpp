@@ -1,11 +1,13 @@
 #include <pch.h>
 
 #include "hooks.h"
+#include "loader.h"
 
 int startup_thread() {
     SetThreadDescription(GetCurrentThread(), L"OpenHotfixLoader");
 
     ohl::hooks::init();
+    ohl::loader::init();
 
     return 1;
 }

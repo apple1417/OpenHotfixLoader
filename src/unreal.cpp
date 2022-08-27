@@ -4,26 +4,6 @@
 
 namespace ohl::unreal {
 
-#pragma region String Conversion
-
-static std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> wstring_converter;
-
-std::wstring FString::to_wstr(void) {
-    return std::wstring(this->data);
-}
-std::string FString::to_str(void) {
-    return wstring_converter.to_bytes(this->to_wstr());
-}
-
-std::wstring FJsonValueString::to_wstr(void) {
-    return this->str.to_wstr();
-}
-std::string FJsonValueString::to_str(void) {
-    return this->str.to_str();
-}
-
-#pragma endregion
-
 #pragma region Casting
 
 template <typename T>
@@ -63,6 +43,14 @@ T* FJsonValue::cast(void) {
 
 #pragma region Accessors
 
+std::wstring FString::to_wstr(void) {
+    return std::wstring(this->data);
+}
+
+std::wstring FJsonValueString::to_wstr(void) {
+    return this->str.to_wstr();
+}
+
 uint32_t FJsonValueArray::count() {
     return this->entries.count;
 }
@@ -83,7 +71,7 @@ T* FJsonObject::get(std::wstring key) {
             return entry.value.obj->cast<T>();
         }
     }
-    throw std::runtime_error("Couldn't find key " + wstring_converter.to_bytes(key));
+    throw std::runtime_error("Couldn't find key!");
 }
 
 FJsonObject* FJsonValueObject::to_obj(void) {

@@ -1,21 +1,13 @@
 #include <pch.h>
 
 #include "hooks.h"
+#include "loader.h"
 #include "unreal.h"
 
 using namespace ohl::unreal;
 
 namespace ohl::processing {
 
-static std::vector<std::pair<std::wstring, std::wstring>> INJECTED_HOTFIXES = {
-    {L"SparkPatchEntry999999",
-     L"(1,1,0,),/Game/PlayerCharacters/_Shared/_Design/Sliding/"
-     L"ControlledMove_Global_Sliding.Default__ControlledMove_Global_Sliding_C,Duration."
-     L"BaseValueConstant,0,,5000"},
-};
-
-static std::wstring NEWS_HEADER = L"OHL: Loaded 1234 hotfixes";
-static std::wstring NEWS_BODY = L"Running mods:\nA\nB\nC";
 static const std::wstring NEWS_IMAGE = L"https://i.ytimg.com/vi/V4MF2s6MLxY/maxresdefault.jpg";
 
 struct vf_tables {
@@ -133,7 +125,8 @@ static FJsonValueArray* create_json_array(std::vector<FJsonValue*> entries) {
 
     obj->entries.count = n;
     obj->entries.max = n;
-    obj->entries.data = ohl::hooks::malloc<TSharedPtr<FJsonValue>>(n * sizeof(TSharedPtr<FJsonValue>));
+    obj->entries.data =
+        ohl::hooks::malloc<TSharedPtr<FJsonValue>>(n * sizeof(TSharedPtr<FJsonValue>));
 
     for (auto i = 0; i < n; i++) {
         obj->entries.data[i].obj = entries[i];
@@ -177,9 +170,10 @@ void handle_discovery_from_json(FJsonObject** json) {
         throw std::runtime_error("Didn't find vf tables in time!");
     }
 
-    auto params = micropatch->get<FJsonValueArray>(L"parameters");
+    auto hotfixes = ohl::loader::get_hotfixes();
 
-    auto new_hotfix_count = params->entries.count + INJECTED_HOTFIXES.size();
+    auto params = micropatch->get<FJsonValueArray>(L"parameters");
+    auto new_hotfix_count = params->entries.count + hotfixes.size();
     if (new_hotfix_count > params->entries.max) {
         params->entries.max = new_hotfix_count;
         params->entries.data = ohl::hooks::realloc<TSharedPtr<FJsonValue>>(
@@ -187,7 +181,7 @@ void handle_discovery_from_json(FJsonObject** json) {
     }
 
     auto i = params->entries.count;
-    for (const auto& [key, hotfix] : INJECTED_HOTFIXES) {
+    for (const auto& [key, hotfix] : hotfixes) {
         auto hotfix_entry = create_json_object<2>(
             {{{L"key", create_json_string(key)}, {L"value", create_json_string(hotfix)}}});
 
@@ -225,8 +219,9 @@ void handle_news_from_json(ohl::unreal::FJsonObject** json) {
             news_data->entries.data, news_data->entries.max * sizeof(TSharedPtr<FJsonValue>));
     }
 
-    auto contents_obj = create_json_object<2>(
-        {{{L"header", create_json_string(NEWS_HEADER)}, {L"body", create_json_string(NEWS_BODY)}}});
+    auto contents_obj =
+        create_json_object<2>({{{L"header", create_json_string(ohl::loader::get_news_header())},
+                                {L"body", create_json_string(ohl::loader::get_news_body())}}});
     auto contents_arr = create_json_array({create_json_value_object(contents_obj)});
 
     auto meta_tag_obj =
@@ -243,8 +238,12 @@ void handle_news_from_json(ohl::unreal::FJsonObject** json) {
                                             {L"article_tags", tags_arr},
                                             {L"availabilities", availabilities_arr}}});
 
-    news_data->entries.data[news_data->entries.count].obj = create_json_value_object(news_obj);
-    add_ref_counter(&news_data->entries.data[news_data->entries.count], vf_table.shared_ptr_json_value);
+    // Shift the existing entries so that ours is at the front
+    memmove(&news_data->entries.data[1], &news_data->entries.data[0],
+            news_data->entries.count * sizeof(TSharedPtr<FJsonValue>));
+
+    news_data->entries.data[0].obj = create_json_value_object(news_obj);
+    add_ref_counter(&news_data->entries.data[0], vf_table.shared_ptr_json_value);
     news_data->entries.count++;
 }
 
