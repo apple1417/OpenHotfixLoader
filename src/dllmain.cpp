@@ -2,6 +2,7 @@
 
 #include "hooks.h"
 #include "loader.h"
+#include "processing.h"
 
 static HMODULE this_module;
 
@@ -10,6 +11,7 @@ int startup_thread() {
         SetThreadDescription(GetCurrentThread(), L"OpenHotfixLoader");
 
         ohl::hooks::init();
+        ohl::processing::init();
         ohl::loader::init(this_module);
     } catch (std::exception ex) {
         std::cout << "[OHL] Exception occured during initalization: " << ex.what() << "\n";

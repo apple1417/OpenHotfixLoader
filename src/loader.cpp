@@ -3,12 +3,10 @@
 #include "loader.h"
 #include "version.h"
 
-using file_modify_list =
-    std::map<std::filesystem::path, std::filesystem::file_time_type>;
+using file_modify_list = std::map<std::filesystem::path, std::filesystem::file_time_type>;
 
 namespace ohl::loader {
 
-static const int HOTFIX_COUNTER_OFFSET = 10000;
 static const std::wstring TYPE_11_PREFIX = L"SparkEarlyLevelPatchEntry,(1,11,0,";
 static const std::wstring TYPE_11_DELAY =
     L"(1,1,0,{map}),/Game/Pickups/Ammo/"
@@ -79,8 +77,8 @@ static void load_mod_file(const std::filesystem::path& path,
             continue;
         }
 
-        auto hotfix_type = mod_line.substr(0, hotfix_type_end_pos) +
-                           std::to_wstring(hotfixes.size() + HOTFIX_COUNTER_OFFSET);
+        auto hotfix_type = mod_line.substr(0, hotfix_type_end_pos);
+        ;
         auto hotfix = mod_line.substr(hotfix_type_end_pos + 1);
 
         if (mod_line.rfind(TYPE_11_PREFIX) == 0) {
@@ -183,10 +181,11 @@ void reload_hotfixes(void) {
         static const auto mesh_length = 6;
 
         for (const auto& mesh : TYPE_11_DELAY_MESHES) {
-            type_11_hotfixes.push_back(
-                {L"SparkEarlyLevelPatchEntry", std::wstring(TYPE_11_DELAY)
-                                                   .replace(map_start_pos, map_length, map)
-                                                   .replace(mesh_start_pos, mesh_length, mesh)});
+            // Make sure to replace mesh first, since it appears later in the string
+            auto hotfix = std::wstring(TYPE_11_DELAY)
+                              .replace(mesh_start_pos, mesh_length, mesh)
+                              .replace(map_start_pos, map_length, map);
+            type_11_hotfixes.push_back({L"SparkEarlyLevelPatchEntry", hotfix});
         }
     }
     for (auto it = type_11_hotfixes.rbegin(); it != type_11_hotfixes.rend(); it++) {
