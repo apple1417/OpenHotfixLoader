@@ -9,7 +9,7 @@ using namespace ohl::unreal;
 namespace ohl::processing {
 
 static const auto HOTFIX_COUNTER_OFFSET = 100000;
-static const std::wstring NEWS_IMAGE = L"https://i.ytimg.com/vi/V4MF2s6MLxY/maxresdefault.jpg";
+static const std::wstring NEWS_ICON = L"https://raw.githubusercontent.com/apple1417/OpenHotfixLoader/master/news_icon.png";
 static const std::wstring HOTFIX_DUMP_FILE = L"hotfixes.dump";
 
 static bool dump_hotfixes = false;
@@ -307,7 +307,7 @@ void handle_news_from_json(ohl::unreal::FJsonObject** json) {
     auto meta_tag_obj =
         create_json_object<1>({{{L"tag", create_json_string(L"img_game_sm_noloc")}}});
     auto tags_obj = create_json_object<2>({{{L"meta_tag", create_json_value_object(meta_tag_obj)},
-                                            {L"value", create_json_string(NEWS_IMAGE)}}});
+                                            {L"value", create_json_string(NEWS_ICON)}}});
     auto tags_arr = create_json_array({create_json_value_object(tags_obj)});
 
     auto availablities_obj =
