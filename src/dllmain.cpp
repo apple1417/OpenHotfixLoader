@@ -6,7 +6,13 @@
 
 static HMODULE this_module;
 
-int startup_thread() {
+/**
+ * @brief Main startup thread.
+ * @note Instance of `ThreadProc`.
+ *
+ * @return unused.
+ */
+int startup_thread(void*) {
     try {
         SetThreadDescription(GetCurrentThread(), L"OpenHotfixLoader");
 
@@ -20,6 +26,13 @@ int startup_thread() {
     return 1;
 }
 
+/**
+ * @brief Main entry point.
+ *
+ * @param hModule Handle to module for this dll.
+ * @param ul_reason_for_call Reason this is being called.
+ * @return True if loaded successfully, false otherwise.
+ */
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID) {
     switch (ul_reason_for_call) {
         case DLL_PROCESS_ATTACH:

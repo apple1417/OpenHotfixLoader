@@ -9,7 +9,8 @@ using namespace ohl::unreal;
 namespace ohl::processing {
 
 static const auto HOTFIX_COUNTER_OFFSET = 100000;
-static const std::wstring NEWS_ICON = L"https://raw.githubusercontent.com/apple1417/OpenHotfixLoader/master/news_icon.png";
+static const std::wstring NEWS_ICON =
+    L"https://raw.githubusercontent.com/apple1417/OpenHotfixLoader/master/news_icon.png";
 static const std::wstring HOTFIX_DUMP_FILE = L"hotfixes.dump";
 
 static bool dump_hotfixes = false;
