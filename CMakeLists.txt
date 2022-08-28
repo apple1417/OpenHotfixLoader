@@ -3,7 +3,7 @@
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-project(OpenHotfixLoader VERSION 0.2.0)
+project(OpenHotfixLoader VERSION 1.0.0)
 set(PROJECT_VERSION_PREFIX "b")
 set(CMAKE_DEBUG_POSTFIX "-Debug")
 
