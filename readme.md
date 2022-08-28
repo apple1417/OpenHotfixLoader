@@ -8,7 +8,7 @@ traffic through themselve. OpenHotfixLoader is the first proxyless injector, so 
 it accidentally leaking your data, or impacting other internet usage.
 
 # Installation
-Alternatively, see [this video guide](https://example.com)
+Alternatively, see [this video guide](https://youtu.be/gHX3dtZIojY)
 
 1. Open up your game's local files.
 2. Navigate to `<game>\OakGame\Binaries\Win64`.
