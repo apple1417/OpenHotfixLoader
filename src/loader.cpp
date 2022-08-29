@@ -7,6 +7,8 @@ using file_modify_list = std::map<std::filesystem::path, std::filesystem::file_t
 
 namespace ohl::loader {
 
+static const std::wstring HOTFIX_PREFIX = L"Spark";
+
 static const std::wstring TYPE_11_PREFIX = L"SparkEarlyLevelPatchEntry,(1,11,0,";
 static const std::wstring TYPE_11_DELAY =
     L"(1,1,0,{map}),/Game/Pickups/Ammo/"
@@ -90,7 +92,11 @@ static void load_mod_file(const std::filesystem::path& path,
     for (std::string narrow_mod_line; std::getline(mod_file, narrow_mod_line);) {
         std::wstring mod_line = widen(narrow_mod_line);
 
-        if (mod_line.rfind(L"Spark") != 0) {
+        auto whitespace_end_pos = mod_line.find_first_not_of(L" \f\n\r\t\b");
+        if (whitespace_end_pos == std::wstring::npos) {
+            continue;
+        }
+        if (mod_line.compare(whitespace_end_pos, HOTFIX_PREFIX.size(), HOTFIX_PREFIX) != 0) {
             continue;
         }
 
@@ -100,7 +106,6 @@ static void load_mod_file(const std::filesystem::path& path,
         }
 
         auto hotfix_type = mod_line.substr(0, hotfix_type_end_pos);
-        ;
         auto hotfix = mod_line.substr(hotfix_type_end_pos + 1);
 
         if (mod_line.rfind(TYPE_11_PREFIX) == 0) {
