@@ -4,6 +4,8 @@
 #include "unreal.h"
 
 using ohl::unreal::FJsonObject;
+using ohl::unreal::FSparkRequest;
+using ohl::unreal::TSharedPtr;
 
 namespace ohl::hooks {
 
@@ -14,6 +16,7 @@ typedef void* (*fmemory_realloc)(void* original, size_t count, uint32_t align);
 typedef void (*fmemory_free)(void* data);
 typedef bool (*discovery_from_json)(void* this_service, FJsonObject** json);
 typedef bool (*news_from_json)(void* this_response, FJsonObject** json);
+typedef void (*add_image_to_cache)(void* this_image_manager, TSharedPtr<FSparkRequest>* req);
 
 /**
  * @brief Struct holding all the game functions we scan for.
@@ -24,6 +27,7 @@ struct game_functions {
     fmemory_free free;
     discovery_from_json discovery;
     news_from_json news;
+    add_image_to_cache image_cache;
 };
 
 static game_functions funcs = {};
@@ -84,6 +88,10 @@ static const sigscan_pattern news_pattern = make_pattern(
     "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF"
     "\xFF\xFF\xFF\xFF\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x00"
     "\x00\x00\x00");
+
+static const sigscan_pattern image_cache_pattern = make_pattern(
+    "\x40\x55\x41\x54\x41\x55\x41\x56\x48\x8D\x6C\x24\x00\x48\x81\xEC\xA8\x00\x00\x00",
+    "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF");
 
 /**
  * @brief Performs a sigscan.
@@ -155,6 +163,27 @@ bool detour_news_from_json(void* this_service, FJsonObject** json) {
     return original_news_from_json(this_service, json);
 }
 
+/**
+ * @brief Detour function for `GbxSparkSdk::Discovery::Services::FromJson`.
+ *
+ * @param this_service The service object this was called on.
+ * @param json Unreal json objects containing the received data.
+ * @return ¯\_(ツ)_/¯
+ */
+static add_image_to_cache original_add_image_to_cache = nullptr;
+void detour_add_image_to_cache(void* this_image_manager, TSharedPtr<FSparkRequest>* req) {
+    bool may_continue = true;
+    try {
+        may_continue = ohl::processing::handle_add_image_to_cache(req);
+    } catch (std::exception ex) {
+        std::cout << "[OHL] Exception occured in image cache hook: " << ex.what() << "\n";
+    }
+
+    if (may_continue) {
+        original_add_image_to_cache(this_image_manager, req);
+    }
+}
+
 void* malloc_raw(size_t count) {
     if (funcs.malloc == nullptr) {
         throw std::runtime_error("Tried to call malloc, which was not found!");
@@ -210,6 +239,8 @@ void init(void) {
     funcs.discovery =
         sigscan<discovery_from_json>(allocation_base, module_length, discovery_pattern);
     funcs.news = sigscan<news_from_json>(allocation_base, module_length, news_pattern);
+    funcs.image_cache =
+        sigscan<add_image_to_cache>(allocation_base, module_length, image_cache_pattern);
 
     auto ret = MH_Initialize();
     if (ret != MH_OK) {
@@ -221,7 +252,6 @@ void init(void) {
     if (ret != MH_OK) {
         throw std::runtime_error("MH_CreateHook failed " + std::to_string(ret));
     }
-
     ret = MH_EnableHook(funcs.discovery);
     if (ret != MH_OK) {
         throw std::runtime_error("MH_EnableHook failed " + std::to_string(ret));
@@ -232,8 +262,17 @@ void init(void) {
     if (ret != MH_OK) {
         throw std::runtime_error("MH_CreateHook failed " + std::to_string(ret));
     }
-
     ret = MH_EnableHook(funcs.news);
+    if (ret != MH_OK) {
+        throw std::runtime_error("MH_EnableHook failed " + std::to_string(ret));
+    }
+
+    ret = MH_CreateHook(funcs.image_cache, &detour_add_image_to_cache,
+                        reinterpret_cast<LPVOID*>(&original_add_image_to_cache));
+    if (ret != MH_OK) {
+        throw std::runtime_error("MH_CreateHook failed " + std::to_string(ret));
+    }
+    ret = MH_EnableHook(funcs.image_cache);
     if (ret != MH_OK) {
         throw std::runtime_error("MH_EnableHook failed " + std::to_string(ret));
     }

@@ -51,6 +51,10 @@ std::wstring FJsonValueString::to_wstr(void) {
     return this->str.to_wstr();
 }
 
+std::wstring FSparkRequest::get_url(void) {
+    return this->url.to_wstr();
+}
+
 uint32_t FJsonValueArray::count() {
     return this->entries.count;
 }

@@ -23,4 +23,13 @@ void handle_discovery_from_json(ohl::unreal::FJsonObject** json);
  */
 void handle_news_from_json(ohl::unreal::FJsonObject** json);
 
+/**
+ * @brief Handles `FOnlineImageManager::AddImageToFileCache` calls, checking if to block execution
+ *        to prevent injected images from being cached.
+ *
+ * @param req The spark request that downloaded this image.
+ * @return True if the function is allowed to continue, false if to block execution.
+ */
+bool handle_add_image_to_cache(ohl::unreal::TSharedPtr<ohl::unreal::FSparkRequest>* req);
+
 }  // namespace ohl::processing

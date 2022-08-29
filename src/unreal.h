@@ -122,4 +122,16 @@ struct FJsonValueObject : FJsonValue {
     FJsonObject* to_obj(void);
 };
 
+struct FSparkRequest {
+    uint32_t unknown[4];
+    FString url;
+
+    /**
+     * @brief Get the url of this request.
+     *
+     * @return the url string
+     */
+    std::wstring get_url(void);
+};
+
 }  // namespace ohl::unreal

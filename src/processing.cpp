@@ -9,7 +9,7 @@ using namespace ohl::unreal;
 namespace ohl::processing {
 
 static const auto HOTFIX_COUNTER_OFFSET = 100000;
-static const std::wstring NEWS_ICON =
+static const std::wstring NEWS_ICON_URL =
     L"https://raw.githubusercontent.com/apple1417/OpenHotfixLoader/master/news_icon.png";
 static const std::wstring HOTFIX_DUMP_FILE = L"hotfixes.dump";
 
@@ -308,7 +308,7 @@ void handle_news_from_json(ohl::unreal::FJsonObject** json) {
     auto meta_tag_obj =
         create_json_object<1>({{{L"tag", create_json_string(L"img_game_sm_noloc")}}});
     auto tags_obj = create_json_object<2>({{{L"meta_tag", create_json_value_object(meta_tag_obj)},
-                                            {L"value", create_json_string(NEWS_ICON)}}});
+                                            {L"value", create_json_string(NEWS_ICON_URL)}}});
     auto tags_arr = create_json_array({create_json_value_object(tags_obj)});
 
     auto availablities_obj =
@@ -328,6 +328,17 @@ void handle_news_from_json(ohl::unreal::FJsonObject** json) {
     news_data->entries.count++;
 
     std::cout << "[OHL] Injected news\n";
+}
+
+bool handle_add_image_to_cache(TSharedPtr<FSparkRequest>* req) {
+    auto url = req->obj->get_url();
+
+    auto may_continue = url != NEWS_ICON_URL;
+    if (!may_continue) {
+        std::cout << "[OHL] Prevented news icon from being cached\n";
+    }
+
+    return may_continue;
 }
 
 }  // namespace ohl::processing
