@@ -48,6 +48,28 @@ static std::wstring get_formatted_name(void) {
 }
 
 /**
+ * @brief Widens a utf-8 string to a utf-16 wstring.
+ *
+ * @param str The input string.
+ * @return The output wstring.
+ */
+static std::wstring widen(std::string str) {
+    auto num_chars = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), str.size(), NULL, 0);
+    wchar_t* wstr = reinterpret_cast<wchar_t*>(malloc((num_chars + 1) * sizeof(wchar_t)));
+    if (!wstr) {
+        throw std::runtime_error("Failed to convert utf8 string!");
+    }
+
+    MultiByteToWideChar(CP_UTF8, 0, str.c_str(), str.size(), wstr, num_chars);
+    wstr[num_chars] = L'\0';
+
+    std::wstring ret{wstr};
+    free(wstr);
+
+    return ret;
+}
+
+/**
  * @brief Loads all hotfixes in a mod file.
  *
  * @param path Path to the file.
@@ -59,15 +81,15 @@ static void load_mod_file(const std::filesystem::path& path,
                           hotfix_list& hotfixes,
                           hotfix_list& type_11_hotfixes,
                           std::unordered_set<std::wstring>& type_11_maps) {
-    std::wifstream mod_file{path};
+    std::ifstream mod_file{path};
     if (!mod_file.is_open()) {
         std::wcout << L"[OHL] Failed to open file '" << path << L"'!\n";
         return;
     }
-    mod_file.imbue(
-        std::locale(std::locale::empty(), new std::codecvt<wchar_t, char, std::mbstate_t>));
 
-    for (std::wstring mod_line; std::getline(mod_file, mod_line);) {
+    for (std::string narrow_mod_line; std::getline(mod_file, narrow_mod_line);) {
+        std::wstring mod_line = widen(narrow_mod_line);
+
         if (mod_line.rfind(L"Spark") != 0) {
             continue;
         }
