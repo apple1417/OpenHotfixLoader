@@ -21,7 +21,7 @@ target_include_directories(OpenHotfixLoader PRIVATE "${PROJECT_BINARY_DIR}/inc" 
 target_link_libraries(OpenHotfixLoader PUBLIC minhook)
 
 # CMake by default defines NDEBUG in release, we also want the opposite
-target_compile_definitions(OpenHotfixLoader PRIVATE "$<$<CONFIG:DEBUG>:_DEBUG>")
+target_compile_definitions(OpenHotfixLoader PRIVATE "$<$<CONFIG:DEBUG>:DEBUG>")
 target_compile_definitions(OpenHotfixLoader PRIVATE "UNICODE" "_UNICODE")
 
 # The precompiled header must be defined AFTER the compile defines

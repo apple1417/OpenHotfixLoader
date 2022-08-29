@@ -16,6 +16,10 @@ int startup_thread(void*) {
     try {
         SetThreadDescription(GetCurrentThread(), L"OpenHotfixLoader");
 
+#ifdef DEBUG
+        std::cout << "[OHL] Running in debug mode";
+#endif
+
         ohl::hooks::init();
         ohl::processing::init();
         ohl::loader::init(this_module);
