@@ -105,7 +105,8 @@ static void load_mod_file(const std::filesystem::path& path,
             continue;
         }
 
-        auto hotfix_type = mod_line.substr(0, hotfix_type_end_pos);
+        auto hotfix_type =
+            mod_line.substr(whitespace_end_pos, hotfix_type_end_pos - whitespace_end_pos);
         auto hotfix = mod_line.substr(hotfix_type_end_pos + 1);
 
         if (mod_line.rfind(TYPE_11_PREFIX) == 0) {
