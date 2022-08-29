@@ -251,8 +251,10 @@ hotfix_list get_hotfixes(void) {
 
 std::wstring get_news_header(void) {
     auto size = injected_hotfixes.size();
-    if (size > 0) {
+    if (size > 1) {
         return get_formatted_name() + L": " + std::to_wstring(size) + L" hotfixes loaded";
+    } else if (size == 1) {
+        return get_formatted_name() + L": 1 hotfix loaded";
     } else {
         return get_formatted_name() + L": No hotfixes loaded";
     }
