@@ -244,7 +244,7 @@ void handle_discovery_from_json(FJsonObject** json) {
     }
 
     if (!vf_table.found) {
-        throw std::runtime_error("Didn't find vf tables in time!");
+        throw std::runtime_error("[OHL] Didn't find vf tables in time!");
     }
 
     ohl::loader::reload_hotfixes();
@@ -291,7 +291,7 @@ void handle_discovery_from_json(FJsonObject** json) {
 
 void handle_news_from_json(ohl::unreal::FJsonObject** json) {
     if (!vf_table.found) {
-        ohl::logger::logPrint( "Didn't find vf tables in time!");
+        ohl::logger::logPrint( "[OHL] Didn't find vf tables in time!");
         throw std::runtime_error("Didn't find vf tables in time!");
     }
 
