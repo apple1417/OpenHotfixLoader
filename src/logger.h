@@ -8,7 +8,6 @@
 
 namespace ohl::logger {
 
-const char* logPath = "ohl.log";
 
 /**
  * @brief Logs a logMessage to the log file ohl::logger::logPath. \n will be
@@ -18,8 +17,8 @@ const char* logPath = "ohl.log";
  */
 void log( const char * logMessage );
 void log( const wchar_t * logMessage );
-void log( std::ostream& logMessage );
-void log( std::wostream& logMessage );
+void log( const std::ostream& logMessage );
+void log( const std::wostream& logMessage );
 /**
  * @brief Logs AND prints a logMessage to the log file ohl::logger::logPath. \n will be
  * added at the end
@@ -28,6 +27,6 @@ void log( std::wostream& logMessage );
  */
 void logPrint( const char * logMessage );
 void logPrint( const wchar_t * logMessage );
-void logPrint( std::ostream& logMessage );
-void logPrint( std::wostream& logMessage );
+void logPrint( const std::ostream& logMessage );
+void logPrint( const std::wostream& logMessage );
 }  // namespace ohl
