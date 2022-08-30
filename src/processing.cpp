@@ -3,8 +3,10 @@
 #include "hooks.h"
 #include "loader.h"
 #include "unreal.h"
+#include "logger.h"
 
 using namespace ohl::unreal;
+using namespace ohl::logger;
 
 namespace ohl::processing {
 
@@ -269,7 +271,7 @@ void handle_discovery_from_json(FJsonObject** json) {
 
     params->entries.count = new_hotfix_count;
 
-    std::cout << "[OHL] Injected hotfixes\n";
+    ohl::logger::logPrint( "[OHL] Injected hotfixes" );
 
     if (dump_hotfixes) {
         std::wofstream dump{HOTFIX_DUMP_FILE};
@@ -283,12 +285,13 @@ void handle_discovery_from_json(FJsonObject** json) {
             dump << key << L": " << value << "\n";
         }
         dump.close();
-        std::cout << "[OHL] Dumped hotfixes to file\n";
+        ohl::logger::logPrint( "[OHL] Dumped hotfixes to file" );
     }
 }
 
 void handle_news_from_json(ohl::unreal::FJsonObject** json) {
     if (!vf_table.found) {
+        ohl::logger::logPrint( "Didn't find vf tables in time!");
         throw std::runtime_error("Didn't find vf tables in time!");
     }
 
@@ -327,7 +330,7 @@ void handle_news_from_json(ohl::unreal::FJsonObject** json) {
     add_ref_controller(&news_data->entries.data[0], vf_table.shared_ptr_json_value);
     news_data->entries.count++;
 
-    std::cout << "[OHL] Injected news\n";
+    ohl::logger::logPrint( "[OHL] Injected news" );
 }
 
 bool handle_add_image_to_cache(TSharedPtr<FSparkRequest>* req) {
@@ -335,7 +338,7 @@ bool handle_add_image_to_cache(TSharedPtr<FSparkRequest>* req) {
 
     auto may_continue = url != NEWS_ICON_URL;
     if (!may_continue) {
-        std::cout << "[OHL] Prevented news icon from being cached\n";
+        ohl::logger::logPrint( "[OHL] Prevented news icon from being cached" );
     }
 
     return may_continue;

@@ -1,12 +1,15 @@
 #include <pch.h>
 
 #include "loader.h"
+#include "logger.h"
 #include "version.h"
 
 // Type used to store data about loaded hotfix files
 // While a map would seem cleaner, it loses load order, we need to preserve it
 using hotfix_file_data_list =
     std::vector<std::pair<std::filesystem::path, std::filesystem::file_time_type>>;
+
+using namespace ohl::logger;
 
 namespace ohl::loader {
 
@@ -111,7 +114,7 @@ static void load_mod_file(const std::filesystem::path& path,
                           std::unordered_set<std::wstring>& type_11_maps) {
     std::ifstream mod_file{path};
     if (!mod_file.is_open()) {
-        std::wcout << L"[OHL] Failed to open file '" << path << L"'!\n";
+        ohl::logger::logPrint( std::wstringstream() << L"[OHL] Failed to open file '" << path << L"'!" );
         return;
     }
 
@@ -256,7 +259,8 @@ void init(HMODULE this_module) {
 
     reload_hotfixes();
 
-    std::wcout << L"[OHL] " << get_loaded_mods_str() << "\n";
+    ohl::logger::logPrint( std::wstringstream << L"[OHL] " << get_loaded_mods_str() );
+
 }
 
 hotfix_list get_hotfixes(void) {

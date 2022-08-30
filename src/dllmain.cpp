@@ -3,8 +3,10 @@
 #include "hooks.h"
 #include "loader.h"
 #include "processing.h"
+#include "logger.h"
 
 static HMODULE this_module;
+using namespace ohl::logger;
 
 /**
  * @brief Main startup thread.
@@ -17,14 +19,14 @@ int startup_thread(void*) {
         SetThreadDescription(GetCurrentThread(), L"OpenHotfixLoader");
 
 #ifdef DEBUG
-        std::cout << "[OHL] Running in debug mode";
+        ohl::logger::logPrint( "[OHL] Running in debug mode" );
 #endif
 
         ohl::hooks::init();
         ohl::processing::init();
         ohl::loader::init(this_module);
     } catch (std::exception ex) {
-        std::cout << "[OHL] Exception occured during initalization: " << ex.what() << "\n";
+        ohl::logger::logPrint( std::stringstream() << "[OHL] Exception occured during initalization: " << ex.what() );
     }
 
     return 1;

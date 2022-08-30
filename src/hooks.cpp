@@ -2,6 +2,8 @@
 
 #include "processing.h"
 #include "unreal.h"
+#include "logger.h"
+using namespace ohl::logger;
 
 using ohl::unreal::FJsonObject;
 using ohl::unreal::FSparkRequest;
@@ -139,7 +141,7 @@ bool detour_discovery_from_json(void* this_service, FJsonObject** json) {
     try {
         ohl::processing::handle_discovery_from_json(json);
     } catch (std::exception ex) {
-        std::cout << "[OHL] Exception occured in discovery hook: " << ex.what() << "\n";
+        ohl::logger::logPrint( std::stringstream() << "[OHL] Exception occured in discovery hook: " << ex.what() );
     }
 
     return original_discovery_from_json(this_service, json);
@@ -157,7 +159,7 @@ bool detour_news_from_json(void* this_service, FJsonObject** json) {
     try {
         ohl::processing::handle_news_from_json(json);
     } catch (std::exception ex) {
-        std::cout << "[OHL] Exception occured in news hook: " << ex.what() << "\n";
+        ohl::logger::logPrint( std::stringstream() << "[OHL] Exception occured in news hook: " << ex.what() );
     }
 
     return original_news_from_json(this_service, json);
@@ -176,7 +178,7 @@ void detour_add_image_to_cache(void* this_image_manager, TSharedPtr<FSparkReques
     try {
         may_continue = ohl::processing::handle_add_image_to_cache(req);
     } catch (std::exception ex) {
-        std::cout << "[OHL] Exception occured in image cache hook: " << ex.what() << "\n";
+        ohl::logger::logPrint( std::stringstream() << "[OHL] Exception occured in image hook: " << ex.what() );
     }
 
     if (may_continue) {
@@ -277,7 +279,7 @@ void init(void) {
         throw std::runtime_error("MH_EnableHook failed " + std::to_string(ret));
     }
 
-    std::cout << "[OHL] Hooks injected successfully\n";
+    ohl::logger::logPrint( "[OHL] Hooks injected successfully" );
 }
 
 }  // namespace ohl::hooks
