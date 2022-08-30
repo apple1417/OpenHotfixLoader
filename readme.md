@@ -30,14 +30,17 @@ To install a hotfix mod, simply download it, and add it to the `ohl-mods` folder
 If you edit mods while the game is open, you need to quit to title screen, then load back onto the
 main menu in order to reload them.
 
-Mods are loaded in alphabetical order, so if one mod needs to be loaded before another, simply
-rename it.
+Mods are loaded in numeric-alphabetical order - `A.txt` loads before `B.txt`, and `9.txt` before
+`10.txt`. This should be the same order which Windows Explorer displays when you sort by name. If
+one mod needs to be loaded before another, simply rename it so sorts later.
 
 
 # Notes for Modders
 If you ever need to debug the exact hotfixes being applied, launch the game with the
 `--dump-hotfixes` command line argument. This will create a `hotfixes.dump` in win64 every time
 they're loaded.
+
+Mod files are expected to be utf8 encoded.
 
 # Developing
 To get started developing:

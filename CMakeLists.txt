@@ -9,6 +9,8 @@ set(CMAKE_DEBUG_POSTFIX "-Debug")
 
 add_subdirectory(minhook)
 
+find_library(shlwapi Shlwapi.lib)
+
 configure_file(versioninfo.rc.in versioninfo.rc)
 configure_file(src/version.h.in inc/version.h)
 
@@ -18,7 +20,7 @@ file(GLOB_RECURSE sources CONFIGURE_DEPENDS "src/*.c" "src/*.cpp" "src/*.h" "src
 add_library(OpenHotfixLoader SHARED ${sources} "${CMAKE_CURRENT_BINARY_DIR}/versioninfo.rc")
 target_include_directories(OpenHotfixLoader PRIVATE "${PROJECT_BINARY_DIR}/inc" "src")
 
-target_link_libraries(OpenHotfixLoader PUBLIC minhook)
+target_link_libraries(OpenHotfixLoader PUBLIC minhook shlwapi)
 
 # CMake by default defines NDEBUG in release, we also want the opposite
 target_compile_definitions(OpenHotfixLoader PRIVATE "$<$<CONFIG:DEBUG>:DEBUG>")

@@ -3,7 +3,10 @@
 #include "loader.h"
 #include "version.h"
 
-using file_modify_list = std::map<std::filesystem::path, std::filesystem::file_time_type>;
+// Type used to store data about loaded hotfix files
+// While a map would seem cleaner, it loses load order, we need to preserve it
+using hotfix_file_data_list =
+    std::vector<std::pair<std::filesystem::path, std::filesystem::file_time_type>>;
 
 namespace ohl::loader {
 
@@ -30,7 +33,7 @@ static std::filesystem::path exe_path = "";
 static std::filesystem::path mod_dir = "ohl-mods";
 
 static hotfix_list injected_hotfixes{};
-static file_modify_list hotfix_write_times{};
+static hotfix_file_data_list hotfix_files{};
 
 /**
  * @brief Get a string holding our name + version.
@@ -55,7 +58,7 @@ static std::wstring get_formatted_name(void) {
  * @param str The input string.
  * @return The output wstring.
  */
-static std::wstring widen(std::string str) {
+static std::wstring widen(const std::string& str) {
     auto num_chars = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), str.size(), NULL, 0);
     wchar_t* wstr = reinterpret_cast<wchar_t*>(malloc((num_chars + 1) * sizeof(wchar_t)));
     if (!wstr) {
@@ -69,6 +72,29 @@ static std::wstring widen(std::string str) {
     free(wstr);
 
     return ret;
+}
+
+/**
+ * @brief Get all files in a directory, sorted numerically.
+ * @note Returns 1, 5, 10, etc.
+ *
+ * @param path Path to the directory.
+ * @return A list of file paths.
+ */
+static std::vector<std::filesystem::path> get_sorted_files_in_dir(
+    const std::filesystem::path& path) {
+    std::vector<std::filesystem::path> files{};
+    for (const auto& dir_entry : std::filesystem::directory_iterator{path}) {
+        if (dir_entry.is_directory()) {
+            continue;
+        }
+        files.push_back(dir_entry.path());
+    }
+    std::sort(files.begin(), files.end(), [](const auto& a, const auto& b) -> bool {
+        return StrCmpLogicalW(a.c_str(), b.c_str()) < 0;
+    });
+
+    return files;
 }
 
 /**
@@ -128,33 +154,23 @@ static void load_mod_file(const std::filesystem::path& path,
  * @brief Loads all hotfixes in a directory.
  *
  * @param path Path to the directory.
- * @param loaded_files A set of files which have been loaded.
- * @param hotfixes A list of hotfixes.
- * @param type_11_hotfixes A list of type 11 hotfixes.
+ * @param loaded_files A list of files which had hotfixes loaded, in the order they were loaded.
+ * @param hotfixes A list of extracted hotfixes.
+ * @param type_11_hotfixes A list of extracted type 11 hotfixes.
  * @param type_11_maps A set of maps on which type 11 hotfixes exist.
  * @return True if any hotfixes were loaded, false otherwise
  */
 static void load_mod_dir(const std::filesystem::path& path,
-                         std::set<std::wstring>& loaded_files,
+                         std::vector<std::filesystem::path>& loaded_files,
                          hotfix_list& hotfixes,
                          hotfix_list& type_11_hotfixes,
                          std::unordered_set<std::wstring>& type_11_maps) {
-    // `directory_iterator` doesn't guarentee any order, so need to do an inital pass before sorting
-    std::vector<std::filesystem::path> mod_files{};
-    for (const auto& dir_entry : std::filesystem::directory_iterator{path}) {
-        if (dir_entry.is_directory()) {
-            continue;
-        }
-        mod_files.push_back(dir_entry.path());
-    }
-    std::sort(mod_files.begin(), mod_files.end());
-
-    for (const auto& file : mod_files) {
-        if (loaded_files.count(file) > 0) {
+    for (const auto& file : get_sorted_files_in_dir(path)) {
+        if (std::find(loaded_files.begin(), loaded_files.end(), file) != loaded_files.end()) {
             continue;
         }
         load_mod_file(file, hotfixes, type_11_hotfixes, type_11_maps);
-        loaded_files.insert(file);
+        loaded_files.push_back(file);
     }
 }
 
@@ -167,9 +183,9 @@ void reload_hotfixes(void) {
     }
 
     // Cache a set of last modify times, and only actually reload when a file gets updated.
-    if (hotfix_write_times.size() > 0) {
+    if (hotfix_files.size() > 0) {
         // Last write time doesn't update on new/deleted files in a dir, so check by grabbing a list
-        std::set<std::filesystem::path> current_file_list{};
+        std::unordered_set<std::filesystem::path> current_file_list{};
         for (const auto& dir_entry : std::filesystem::directory_iterator{mod_dir}) {
             if (dir_entry.is_directory()) {
                 continue;
@@ -178,7 +194,7 @@ void reload_hotfixes(void) {
         }
 
         bool any_modified = false;
-        for (const auto& [file, last_time] : hotfix_write_times) {
+        for (const auto& [file, last_time] : hotfix_files) {
             // If we fail to erase, the file got deleted
             if (current_file_list.erase(file) == 0) {
                 any_modified = true;
@@ -194,7 +210,7 @@ void reload_hotfixes(void) {
         }
     }
 
-    std::set<std::wstring> loaded_files{};
+    std::vector<std::filesystem::path> loaded_files{};
     hotfix_list new_hotfixes{};
     hotfix_list type_11_hotfixes{};
     std::unordered_set<std::wstring> type_11_maps{};
@@ -220,13 +236,13 @@ void reload_hotfixes(void) {
         new_hotfixes.push_front(*it);
     }
 
-    file_modify_list new_modify_times{};
+    hotfix_file_data_list new_hotfix_files{};
     for (const auto& file : loaded_files) {
-        new_modify_times[file] = std::filesystem::last_write_time(file);
+        new_hotfix_files.push_back({file, std::filesystem::last_write_time(file)});
     }
 
     injected_hotfixes = new_hotfixes;
-    hotfix_write_times = new_modify_times;
+    hotfix_files = new_hotfix_files;
 }
 
 void init(HMODULE this_module) {
@@ -268,7 +284,7 @@ std::wstring get_loaded_mods_str(void) {
 
     std::wstringstream stream{};
     stream << L"Loaded files:\n";
-    for (const auto& [file, _] : hotfix_write_times) {
+    for (const auto& [file, _] : hotfix_files) {
         if (file.parent_path() != mod_dir) {
             stream << file.wstring() << L"\n";
         } else {

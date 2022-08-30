@@ -4,6 +4,7 @@
 #include <Windows.h>
 
 #include <MinHook.h>
+#include <Shlwapi.h>
 
 #ifdef __cplusplus
 #include <array>
@@ -15,8 +16,6 @@
 #include <fstream>
 #include <iostream>
 #include <locale>
-#include <map>
-#include <set>
 #include <sstream>
 #include <stdexcept>
 #include <string>
