@@ -272,15 +272,34 @@ void handle_discovery_from_json(FJsonObject** json) {
     std::cout << "[OHL] Injected hotfixes\n";
 
     if (dump_hotfixes) {
-        std::wofstream dump{HOTFIX_DUMP_FILE};
-        dump.imbue(
-            std::locale(std::locale::empty(), new std::codecvt<char16_t, char, std::mbstate_t>));
+        // For some god forsaken reason the default behaviour of **w**ofstream is to output ascii.
+        // Since encodings are a pain, just write directly in binary.
+        // This also means we can actually use this to double check out utf8-utf16 conversion works
+        std::ofstream dump{HOTFIX_DUMP_FILE, std::ios::binary};
+
+        // Since it should look like utf16, add a BOM
+        dump.put(0xFF);
+        dump.put(0xFE);
+
         for (auto i = 0; i < params->count(); i++) {
             auto entry = params->get<FJsonValueObject>(i)->to_obj();
-            auto key = entry->get<FJsonValueString>(L"key")->to_wstr();
-            auto value = entry->get<FJsonValueString>(L"value")->to_wstr();
+            auto key = entry->get<FJsonValueString>(L"key")->str;
+            auto value = entry->get<FJsonValueString>(L"value")->str;
 
-            dump << key << L": " << value << "\n";
+            static_assert(sizeof(wchar_t) % sizeof(char) == 0);
+            const auto chars_per_wchar = sizeof(wchar_t) / sizeof(char);
+
+            dump.write(reinterpret_cast<char*>(key.data), (key.count - 1) * chars_per_wchar);
+
+            dump.put(':');
+            dump.put(0x00);
+            dump.put(' ');
+            dump.put(0x00);
+
+            dump.write(reinterpret_cast<char*>(value.data), (value.count - 1) * chars_per_wchar);
+
+            dump.put('\n');
+            dump.put(0x00);
         }
         dump.close();
         std::cout << "[OHL] Dumped hotfixes to file\n";
