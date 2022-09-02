@@ -2,6 +2,7 @@
 
 #include "dllmain.h"
 #include "loader.h"
+#include "util.h"
 #include "version.h"
 
 // Type used to store data about loaded hotfix files
@@ -28,73 +29,15 @@ static const std::vector<std::wstring> TYPE_11_DELAY_MESHES = {
     L"/Game/Pickups/Ammo/Model/Meshes/SM_ammo_pistol.SM_ammo_pistol",
 };
 
+static const std::wstring OHL_NEWS_ITEM_URL =
+    L"https://raw.githubusercontent.com/apple1417/OpenHotfixLoader/master/news_icon.png";
+
 // Again this default works, relative to the cwd, we'll try replace it later.
 static std::filesystem::path mod_dir = "ohl-mods";
 
-static hotfix_list injected_hotfixes{};
+static std::deque<hotfix> injected_hotfixes{};
+static std::deque<news_item> injected_news_items{};
 static hotfix_file_data_list hotfix_files{};
-
-/**
- * @brief Get a string holding our name + version.
- * @note May format the string depending on game.
- *
- * @return The OHL name + version string.
- */
-static std::wstring get_formatted_name(void) {
-    // If we're in BL3, colour the name.
-    // WL doesn't support font tags :(
-    if (exe_path.stem() == "Borderlands3") {
-        return L"<font color='#0080E0'>OHL</font><font size='14' color='#C0C0C0'> " VERSION_STRING
-               "</font>";
-    }
-
-    return L"OHL " VERSION_STRING;
-}
-
-/**
- * @brief Widens a utf-8 string to a utf-16 wstring.
- *
- * @param str The input string.
- * @return The output wstring.
- */
-static std::wstring widen(const std::string& str) {
-    auto num_chars = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), str.size(), NULL, 0);
-    wchar_t* wstr = reinterpret_cast<wchar_t*>(malloc((num_chars + 1) * sizeof(wchar_t)));
-    if (!wstr) {
-        throw std::runtime_error("Failed to convert utf8 string!");
-    }
-
-    MultiByteToWideChar(CP_UTF8, 0, str.c_str(), str.size(), wstr, num_chars);
-    wstr[num_chars] = L'\0';
-
-    std::wstring ret{wstr};
-    free(wstr);
-
-    return ret;
-}
-
-/**
- * @brief Get all files in a directory, sorted numerically.
- * @note Returns 1, 5, 10, etc.
- *
- * @param path Path to the directory.
- * @return A list of file paths.
- */
-static std::vector<std::filesystem::path> get_sorted_files_in_dir(
-    const std::filesystem::path& path) {
-    std::vector<std::filesystem::path> files{};
-    for (const auto& dir_entry : std::filesystem::directory_iterator{path}) {
-        if (dir_entry.is_directory()) {
-            continue;
-        }
-        files.push_back(dir_entry.path());
-    }
-    std::sort(files.begin(), files.end(), [](const auto& a, const auto& b) -> bool {
-        return StrCmpLogicalW(a.c_str(), b.c_str()) < 0;
-    });
-
-    return files;
-}
 
 /**
  * @brief Loads all hotfixes in a mod file.
@@ -105,8 +48,8 @@ static std::vector<std::filesystem::path> get_sorted_files_in_dir(
  * @param type_11_maps A set of maps on which type 11 hotfixes exist.
  */
 static void load_mod_file(const std::filesystem::path& path,
-                          hotfix_list& hotfixes,
-                          hotfix_list& type_11_hotfixes,
+                          std::deque<hotfix>& hotfixes,
+                          std::deque<hotfix>& type_11_hotfixes,
                           std::unordered_set<std::wstring>& type_11_maps) {
     std::ifstream mod_file{path};
     if (!mod_file.is_open()) {
@@ -115,7 +58,7 @@ static void load_mod_file(const std::filesystem::path& path,
     }
 
     for (std::string narrow_mod_line; std::getline(mod_file, narrow_mod_line);) {
-        std::wstring mod_line = widen(narrow_mod_line);
+        std::wstring mod_line = ohl::util::widen(narrow_mod_line);
 
         auto whitespace_end_pos = mod_line.find_first_not_of(L" \f\n\r\t\b");
         if (whitespace_end_pos == std::wstring::npos) {
@@ -161,10 +104,10 @@ static void load_mod_file(const std::filesystem::path& path,
  */
 static void load_mod_dir(const std::filesystem::path& path,
                          std::vector<std::filesystem::path>& loaded_files,
-                         hotfix_list& hotfixes,
-                         hotfix_list& type_11_hotfixes,
+                         std::deque<hotfix>& hotfixes,
+                         std::deque<hotfix>& type_11_hotfixes,
                          std::unordered_set<std::wstring>& type_11_maps) {
-    for (const auto& file : get_sorted_files_in_dir(path)) {
+    for (const auto& file : ohl::util::get_sorted_files_in_dir(path)) {
         if (std::find(loaded_files.begin(), loaded_files.end(), file) != loaded_files.end()) {
             continue;
         }
@@ -173,13 +116,61 @@ static void load_mod_dir(const std::filesystem::path& path,
     }
 }
 
+/**
+ * @brief Creates the news item for OHL, based on the injected hotfixes.
+ * @note Should be run after replacing the injected hotfixes list.
+ *
+ * @return The OHL news item.
+ */
+static news_item get_ohl_news_item(void) {
+    auto size = injected_hotfixes.size();
+
+    // If we're in BL3, colour the name.
+    // WL doesn't support font tags :(
+    std::wstring ohl_name;
+    if (exe_path.stem() == "Borderlands3") {
+        ohl_name =
+            L"<font color='#0080E0'>OHL</font><font size='14' color='#C0C0C0'> " VERSION_STRING
+            "</font>";
+    } else {
+        ohl_name = L"OHL " VERSION_STRING;
+    }
+
+    std::wstring header;
+    if (size > 1) {
+        header = ohl_name + L": " + std::to_wstring(size) + L" hotfixes loaded";
+    } else if (size == 1) {
+        header = ohl_name + L": 1 hotfix loaded";
+    } else {
+        header = ohl_name + L": No hotfixes loaded";
+    }
+
+    std::wstring body;
+    if (size == 0) {
+        body = L"No hotfixes loaded";
+    } else {
+        std::wstringstream stream{};
+        stream << L"Loaded files:\n";
+        for (const auto& [file, _] : hotfix_files) {
+            if (file.parent_path() != mod_dir) {
+                stream << file.wstring() << L"\n";
+            } else {
+                stream << file.filename().wstring() << L"\n";
+            }
+        }
+        body = stream.str();
+    }
+
+    return {header, OHL_NEWS_ITEM_URL, body};
+}
+
 void init(void) {
     if (std::filesystem::exists(dll_path)) {
         mod_dir = dll_path.remove_filename() / mod_dir;
     }
 }
 
-void reload_hotfixes(void) {
+void reload(void) {
     // If the mod folder doesn't exist, create it, and then just quit early since we know we won't
     //  load anything
     if (!std::filesystem::exists(mod_dir)) {
@@ -216,8 +207,8 @@ void reload_hotfixes(void) {
     }
 
     std::vector<std::filesystem::path> loaded_files{};
-    hotfix_list new_hotfixes{};
-    hotfix_list type_11_hotfixes{};
+    std::deque<hotfix> new_hotfixes{};
+    std::deque<hotfix> type_11_hotfixes{};
     std::unordered_set<std::wstring> type_11_maps{};
 
     load_mod_dir(mod_dir, loaded_files, new_hotfixes, type_11_hotfixes, type_11_maps);
@@ -248,44 +239,17 @@ void reload_hotfixes(void) {
 
     injected_hotfixes = new_hotfixes;
     hotfix_files = new_hotfix_files;
+    injected_news_items = {get_ohl_news_item()};
 
-    std::wcout << L"[OHL] " << get_loaded_mods_str() << "\n";
+    std::wcout << L"[OHL] " << injected_news_items[0].body << "\n";
 }
 
-hotfix_list get_hotfixes(void) {
-    // Return a copy
-    hotfix_list hotfixes;
-    hotfixes = injected_hotfixes;
-    return hotfixes;
+std::deque<hotfix> get_hotfixes(void) {
+    return injected_hotfixes;
 }
 
-std::wstring get_news_header(void) {
-    auto size = injected_hotfixes.size();
-    if (size > 1) {
-        return get_formatted_name() + L": " + std::to_wstring(size) + L" hotfixes loaded";
-    } else if (size == 1) {
-        return get_formatted_name() + L": 1 hotfix loaded";
-    } else {
-        return get_formatted_name() + L": No hotfixes loaded";
-    }
-}
-
-std::wstring get_loaded_mods_str(void) {
-    if (injected_hotfixes.size() == 0) {
-        return L"No hotfixes loaded";
-    }
-
-    std::wstringstream stream{};
-    stream << L"Loaded files:\n";
-    for (const auto& [file, _] : hotfix_files) {
-        if (file.parent_path() != mod_dir) {
-            stream << file.wstring() << L"\n";
-        } else {
-            stream << file.filename().wstring() << L"\n";
-        }
-    }
-
-    return stream.str();
+std::deque<news_item> get_news_items(void) {
+    return injected_news_items;
 }
 
 }  // namespace ohl::loader

@@ -9,8 +9,6 @@ using namespace ohl::unreal;
 namespace ohl::processing {
 
 static const auto HOTFIX_COUNTER_OFFSET = 100000;
-static const std::wstring NEWS_ICON_URL =
-    L"https://raw.githubusercontent.com/apple1417/OpenHotfixLoader/master/news_icon.png";
 static const std::wstring HOTFIX_DUMP_FILE = L"hotfixes.dump";
 
 static bool dump_hotfixes = false;
@@ -245,7 +243,7 @@ void handle_discovery_from_json(FJsonObject** json) {
         throw std::runtime_error("Didn't find vf tables in time!");
     }
 
-    ohl::loader::reload_hotfixes();
+    ohl::loader::reload();
     auto hotfixes = ohl::loader::get_hotfixes();
 
     auto params = micropatch->get<FJsonValueArray>(L"parameters");
@@ -311,40 +309,48 @@ void handle_news_from_json(ohl::unreal::FJsonObject** json) {
         throw std::runtime_error("Didn't find vf tables in time!");
     }
 
-    auto news_data = (*json)->get<FJsonValueArray>(L"data");
+    auto news_items = ohl::loader::get_news_items();
 
-    if (news_data->entries.count + 1 > news_data->entries.max) {
-        news_data->entries.max = news_data->entries.count + 1;
+    auto news_data = (*json)->get<FJsonValueArray>(L"data");
+    auto new_news_data_size = news_data->entries.count + news_items.size();
+    if (new_news_data_size > news_data->entries.max) {
+        news_data->entries.max = new_news_data_size;
         news_data->entries.data = ohl::hooks::realloc<TSharedPtr<FJsonValue>>(
             news_data->entries.data, news_data->entries.max * sizeof(TSharedPtr<FJsonValue>));
     }
 
-    auto contents_obj = create_json_object<2>(
-        {{{L"header", create_json_string(ohl::loader::get_news_header())},
-          {L"body", create_json_string(ohl::loader::get_loaded_mods_str())}}});
-    auto contents_arr = create_json_array({create_json_value_object(contents_obj)});
-
-    auto meta_tag_obj =
-        create_json_object<1>({{{L"tag", create_json_string(L"img_game_sm_noloc")}}});
-    auto tags_obj = create_json_object<2>({{{L"meta_tag", create_json_value_object(meta_tag_obj)},
-                                            {L"value", create_json_string(NEWS_ICON_URL)}}});
-    auto tags_arr = create_json_array({create_json_value_object(tags_obj)});
-
-    auto availablities_obj =
-        create_json_object<1>({{{L"startTime", create_json_string(get_current_time_str())}}});
-    auto availabilities_arr = create_json_array({create_json_value_object(availablities_obj)});
-
-    auto news_obj = create_json_object<3>({{{L"contents", contents_arr},
-                                            {L"article_tags", tags_arr},
-                                            {L"availabilities", availabilities_arr}}});
-
-    // Shift the existing entries so that ours is at the front
-    memmove(&news_data->entries.data[1], &news_data->entries.data[0],
+    // Shift the existing entries so that the injected ones appear at the front
+    memmove(&news_data->entries.data[news_items.size()], &news_data->entries.data[0],
             news_data->entries.count * sizeof(TSharedPtr<FJsonValue>));
 
-    news_data->entries.data[0].obj = create_json_value_object(news_obj);
-    add_ref_controller(&news_data->entries.data[0], vf_table.shared_ptr_json_value);
-    news_data->entries.count++;
+    auto i = 0;
+    for (const auto& news_item : news_items) {
+        auto contents_obj =
+            create_json_object<2>({{{L"header", create_json_string(news_item.header)},
+                                    {L"body", create_json_string(news_item.body)}}});
+        auto contents_arr = create_json_array({create_json_value_object(contents_obj)});
+
+        auto meta_tag_obj =
+            create_json_object<1>({{{L"tag", create_json_string(L"img_game_sm_noloc")}}});
+        auto tags_obj =
+            create_json_object<2>({{{L"meta_tag", create_json_value_object(meta_tag_obj)},
+                                    {L"value", create_json_string(news_item.url)}}});
+        auto tags_arr = create_json_array({create_json_value_object(tags_obj)});
+
+        auto availablities_obj =
+            create_json_object<1>({{{L"startTime", create_json_string(get_current_time_str())}}});
+        auto availabilities_arr = create_json_array({create_json_value_object(availablities_obj)});
+
+        auto news_obj = create_json_object<3>({{{L"contents", contents_arr},
+                                                {L"article_tags", tags_arr},
+                                                {L"availabilities", availabilities_arr}}});
+
+        news_data->entries.data[i].obj = create_json_value_object(news_obj);
+        add_ref_controller(&news_data->entries.data[i], vf_table.shared_ptr_json_value);
+        i++;
+    }
+
+    news_data->entries.count = new_news_data_size;
 
     std::cout << "[OHL] Injected news\n";
 }
@@ -352,9 +358,13 @@ void handle_news_from_json(ohl::unreal::FJsonObject** json) {
 bool handle_add_image_to_cache(TSharedPtr<FSparkRequest>* req) {
     auto url = req->obj->get_url();
 
-    auto may_continue = url != NEWS_ICON_URL;
+    auto news_items = ohl::loader::get_news_items();
+    auto may_continue = std::find_if(news_items.begin(), news_items.end(), [&](auto item) {
+                            return item.url == url;
+                        }) == news_items.end();
+
     if (!may_continue) {
-        std::cout << "[OHL] Prevented news icon from being cached\n";
+        std::wcout << L"[OHL] Prevented news icon from being cached: " << url << L"\n";
     }
 
     return may_continue;
