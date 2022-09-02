@@ -6,15 +6,26 @@
 
 static HMODULE this_module;
 
+std::filesystem::path exe_path = "";
+std::filesystem::path dll_path = "";
+
 /**
  * @brief Main startup thread.
  * @note Instance of `ThreadProc`.
  *
  * @return unused.
  */
-int startup_thread(void*) {
+static int32_t startup_thread(void*) {
     try {
         SetThreadDescription(GetCurrentThread(), L"OpenHotfixLoader");
+
+        wchar_t buf[FILENAME_MAX];
+        if (GetModuleFileName(NULL, buf, sizeof(buf))) {
+            exe_path = std::filesystem::path(std::wstring(buf));
+        }
+        if (GetModuleFileName(this_module, buf, sizeof(buf))) {
+            dll_path = std::filesystem::path(std::wstring(buf));
+        }
 
 #ifdef DEBUG
         std::cout << "[OHL] Running in debug mode";
@@ -22,7 +33,7 @@ int startup_thread(void*) {
 
         ohl::hooks::init();
         ohl::processing::init();
-        ohl::loader::init(this_module);
+        ohl::loader::init();
     } catch (std::exception ex) {
         std::cout << "[OHL] Exception occured during initalization: " << ex.what() << "\n";
     }

@@ -1,5 +1,6 @@
 #include <pch.h>
 
+#include "dllmain.h"
 #include "loader.h"
 #include "version.h"
 
@@ -27,9 +28,7 @@ static const std::vector<std::wstring> TYPE_11_DELAY_MESHES = {
     L"/Game/Pickups/Ammo/Model/Meshes/SM_ammo_pistol.SM_ammo_pistol",
 };
 
-// Use defaults which will work relative to the cwd
-// We will try replace these later
-static std::filesystem::path exe_path = "";
+// Again this default works, relative to the cwd, we'll try replace it later.
 static std::filesystem::path mod_dir = "ohl-mods";
 
 static hotfix_list injected_hotfixes{};
@@ -174,6 +173,12 @@ static void load_mod_dir(const std::filesystem::path& path,
     }
 }
 
+void init(void) {
+    if (std::filesystem::exists(dll_path)) {
+        mod_dir = dll_path.remove_filename() / mod_dir;
+    }
+}
+
 void reload_hotfixes(void) {
     // If the mod folder doesn't exist, create it, and then just quit early since we know we won't
     //  load anything
@@ -243,18 +248,6 @@ void reload_hotfixes(void) {
 
     injected_hotfixes = new_hotfixes;
     hotfix_files = new_hotfix_files;
-}
-
-void init(HMODULE this_module) {
-    wchar_t buf[FILENAME_MAX];
-    if (GetModuleFileName(NULL, buf, sizeof(buf))) {
-        exe_path = std::filesystem::path(std::wstring(buf));
-    }
-    if (GetModuleFileName(this_module, buf, sizeof(buf))) {
-        mod_dir = std::filesystem::path(std::wstring(buf)).remove_filename() / mod_dir;
-    }
-
-    reload_hotfixes();
 
     std::wcout << L"[OHL] " << get_loaded_mods_str() << "\n";
 }

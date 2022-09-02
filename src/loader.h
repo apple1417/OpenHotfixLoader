@@ -8,11 +8,8 @@ namespace ohl::loader {
 
 /**
  * @brief Initalizes the loader module.
- * @note Calls `reload_hotfixes()`.
- *
- * @param this_module Handle to this dll.
  */
-void init(HMODULE this_module);
+void init(void);
 
 /**
  * @brief Reloads the hotfix list.
