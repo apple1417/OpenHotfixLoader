@@ -37,7 +37,8 @@ one mod needs to be loaded before another, simply rename it so sorts later.
 
 # Notes for Modders
 ## Commands
-OpenHotfixLoader supports a number of commands. All commands strip leading whitespace.
+OpenHotfixLoader supports a number of commands. All commands strip leading whitespace, and are
+detected case insensitively (though this doesn't mean case doesn't matter when they're intepreted).
 
 ### Hotfixes
 OpenHotfixLoader follows the standard hotfix format.
@@ -67,6 +68,22 @@ url, use csv escaping - quote it, and use double quotes to insert a literal quot
 ```
 InjectNewsItem,"Header, which contains a comma and a pair of ""quotes""",https://url.to/image.png
 ```
+
+### Exec
+You can execute another mod file using the `exec` command. This acts as if all the contents of that
+file were inserted directly into yours at the command's location. Note that a file can only be
+included once, whether that's from an `exec` command, or simply from being in `ohl-mods`, it will
+just get loaded the first time it's referenced.
+
+This command mirrors the format of the actual UE console command - there must be a whitespace
+seperator, and you must quote paths including whitespace.
+
+```
+exec my_mod.bl3hotfix
+exec "D:\My Mods\testing_mod.txt"
+```
+
+Paths are taken relative to the `ohl-mods` folder (unless they're absolute to begin with).
 
 ## Misc Notes
 If you ever need to debug the exact hotfixes being applied, launch the game with the

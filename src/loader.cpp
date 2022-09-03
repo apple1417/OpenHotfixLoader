@@ -7,8 +7,12 @@
 
 namespace ohl::loader {
 
+static const std::wstring WHITESPACE = L" \f\n\r\t\b";
+
 static const std::wstring HOTFIX_COMMAND = L"spark";
 static const std::wstring NEWS_COMMAND = L"injectnewsitem";
+static const std::wstring EXEC_COMMAND = L"exec";
+static const std::wstring URL_COMMAND = L"url=";
 
 static const std::wstring TYPE_11_PREFIX = L"sparkearlylevelpatchentry,(1,11,0,";
 static const std::wstring TYPE_11_DELAY_TYPE = L"SparkEarlyLevelPatchEntry";
@@ -29,13 +33,31 @@ static const std::vector<std::wstring> TYPE_11_DELAY_MESHES = {
 static const std::wstring OHL_NEWS_ITEM_URL =
     L"https://raw.githubusercontent.com/apple1417/OpenHotfixLoader/master/news_icon.png";
 
+/**
+ * @brief Struct holding all data about a given mod file.
+ * @note Only one of path or url should have a value, the other should always be empty.
+ */
 struct mod_file_data {
-    std::filesystem::path path;
+    std::optional<std::filesystem::path> path = std::nullopt;
+    std::optional<std::wstring> url = std::nullopt;
     std::vector<hotfix> hotfixes{};
     std::vector<hotfix> type_11_hotfixes{};
     std::unordered_set<std::wstring> type_11_maps{};
     std::vector<news_item> news_items{};
+
+    /**
+     * @brief Checks if this mod file data is empty.
+     *
+     * @return True if empty, false otherwise.
+     */
+    bool is_empty(void) {
+        return this->hotfixes.size() == 0 && this->type_11_hotfixes.size() == 0 &&
+               this->type_11_maps.size() == 0 && this->news_items.size() == 0;
+    }
 };
+
+static void load_mod_file(const std::filesystem::path&, std::vector<mod_file_data>&);
+static void load_mod_url(const std::string&, std::vector<mod_file_data>&);
 
 // This default works, relative to the cwd, we'll try replace it later.
 static std::filesystem::path mod_dir = "ohl-mods";
@@ -47,26 +69,20 @@ static std::deque<hotfix> injected_hotfixes{};
 static std::deque<news_item> injected_news_items{};
 
 /**
- * @brief Loads all hotfixes in a mod file.
+ * @brief Loads mod from a stream.
  *
- * @param path Path to the file.
+ * @param stream The stream to read from.
+ * @param default_data A mod data struct with metadata pre-initalized. Will be copied as needed.
  * @param file_list List of mod file data to append to.
  */
-static void load_mod_file(const std::filesystem::path& path,
-                          std::vector<mod_file_data>& file_list) {
-    std::ifstream mod_file{path};
-    if (!mod_file.is_open()) {
-        std::wcout << L"[OHL] Failed to open file '" << path << L"'!\n";
-        return;
-    }
-
-    mod_file_data mod_data{};
-    mod_data.path = path;
-
-    for (std::string narrow_mod_line; std::getline(mod_file, narrow_mod_line);) {
+static void load_mod_stream(std::istream& stream,
+                            const mod_file_data& default_data,
+                            std::vector<mod_file_data>& file_list) {
+    auto mod_data = default_data;
+    for (std::string narrow_mod_line; std::getline(stream, narrow_mod_line);) {
         std::wstring mod_line = ohl::util::widen(narrow_mod_line);
 
-        auto whitespace_end_pos = mod_line.find_first_not_of(L" \f\n\r\t\b");
+        auto whitespace_end_pos = mod_line.find_first_not_of(WHITESPACE);
         if (whitespace_end_pos == std::wstring::npos) {
             continue;
         }
@@ -166,10 +182,83 @@ static void load_mod_file(const std::filesystem::path& path,
             mod_data.news_items.push_back(
                 {header, url,
                  url_end_pos == std::string::npos ? L"" : mod_line.substr(url_end_pos)});
+        } else if (is_command(EXEC_COMMAND)) {
+            auto exec_end_pos = whitespace_end_pos + EXEC_COMMAND.size();
+            if (WHITESPACE.find(mod_line[exec_end_pos]) == std::string::npos) {
+                continue;
+            }
+
+            auto path_start = mod_line.find_first_not_of(WHITESPACE, exec_end_pos + 1);
+            if (path_start == std::string::npos) {
+                continue;
+            }
+
+            auto path_end = mod_line.find_last_not_of(WHITESPACE);
+            if (path_end == std::string::npos) {
+                path_end = mod_line.size() - 1;
+            }
+
+            if (mod_line[path_start] == '"' && mod_line[path_end] == '"') {
+                path_start++;
+                path_end--;
+            }
+
+            auto path = (mod_dir / mod_line.substr(path_start, (path_end + 1) - path_start))
+                            .lexically_normal();
+
+            // Push our current data, and create a new one for use after loading the file.
+            // Required to keep proper ordering, the executed file should act as if it was included
+            //  in the middle of the file we're currently reading.
+            if (!mod_data.is_empty()) {
+                file_list.push_back(mod_data);
+                mod_data = default_data;
+            }
+
+            load_mod_file(path, file_list);
         }
     }
 
-    file_list.push_back(mod_data);
+    if (!mod_data.is_empty()) {
+        file_list.push_back(mod_data);
+    }
+}
+
+/**
+ * @brief Loads all hotfixes in a mod file.
+ *
+ * @param path Path to the file.
+ * @param file_list List of mod file data to append to.
+ */
+static void load_mod_file(const std::filesystem::path& path,
+                          std::vector<mod_file_data>& file_list) {
+    // If we've already loaded this file, quit
+    if (std::find_if(file_list.begin(), file_list.end(), [&](auto item) {
+            return item.path.has_value() && item.path.value() == path;
+        }) != file_list.end()) {
+        return;
+    }
+
+    std::ifstream stream{path};
+    if (!stream.is_open()) {
+        return;
+    }
+
+    mod_file_data mod_data{};
+    mod_data.path = path;
+
+    load_mod_stream(stream, mod_data, file_list);
+
+    return;
+}
+
+/**
+ * @brief Loads all hotfixes from a given url.
+ *
+ * @param url The url to load.
+ * @param file_list List of mod file data to append to.
+ */
+static void load_mod_url(const std::wstring& url, std::vector<mod_file_data>& file_list) {
+    // TODO
 }
 
 /**
@@ -209,16 +298,27 @@ static news_item get_ohl_news_item(void) {
         stream << L"Loaded files:\n";
 
         std::unordered_set<std::filesystem::path> seen_files{};
+        std::unordered_set<std::wstring> seen_urls{};
         for (const auto& file_data : mod_files) {
-            if (seen_files.count(file_data.path) > 0) {
-                continue;
-            }
-            seen_files.insert(file_data.path);
+            if (file_data.path.has_value()) {
+                auto path = *file_data.path;
+                if (seen_files.count(path) > 0) {
+                    continue;
+                }
+                seen_files.insert(path);
 
-            if (file_data.path.parent_path() != mod_dir) {
-                stream << file_data.path.wstring() << L"\n";
+                if (path.parent_path() == mod_dir) {
+                    stream << path.filename().wstring() << L"\n";
+                } else {
+                    stream << path.wstring() << L"\n";
+                }
             } else {
-                stream << file_data.path.filename().wstring() << L"\n";
+                auto url = *file_data.url;
+                if (seen_urls.count(url) > 0) {
+                    continue;
+                }
+                seen_urls.insert(url);
+                stream << url << L"\n";
             }
         }
 

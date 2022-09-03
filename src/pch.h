@@ -11,11 +11,13 @@
 #include <codecvt>
 #include <cstdint>
 #include <cwchar>
+#include <cwctype>
 #include <deque>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <mutex>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
 #include <string>
