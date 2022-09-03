@@ -11,6 +11,10 @@ set(CMAKE_DEBUG_POSTFIX "-Debug")
 option(BUILD_SHARED_LIBS "" OFF)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/user-includes.cmake")
+   include("${CMAKE_CURRENT_SOURCE_DIR}/user-includes.cmake")
+endif()
+
 add_subdirectory(cpr)
 add_subdirectory(minhook)
 

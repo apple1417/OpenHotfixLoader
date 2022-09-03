@@ -3,6 +3,7 @@ out
 
 # User scripts with templates
 postbuild.bat
+user-includes.cmake
 
 # CMake (from https://github.com/github/gitignore/blob/main/CMake.gitignore)
 CMakeLists.txt.user
@@ -16,3 +17,4 @@ install_manifest.txt
 compile_commands.json
 CTestTestfile.cmake
 _deps
+CMakeUserPresets.json

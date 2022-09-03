@@ -274,7 +274,9 @@ static void load_mod_url(const std::wstring& url, std::vector<mod_file_data>& fi
     }
 
     auto narrow_url = ohl::util::narrow(url);
-    auto resp = cpr::Get(cpr::Url{narrow_url});
+
+    // An empty string tells libcurl to accept whatever encodings it can
+    auto resp = cpr::Get(cpr::Url{narrow_url}, cpr::AcceptEncoding{{""}});
 
     if (resp.status_code == 0) {
         std::cout << "[OHL] Error downloading '" << narrow_url << "': " << resp.error.message

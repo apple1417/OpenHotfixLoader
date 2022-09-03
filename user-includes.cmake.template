@@ -1,0 +1,10 @@
+# This file can be used to customize the included libraries
+# I know it's not ideal, but as much as I tried I could not get FindZLIB to behave another way
+# If this file exists (as the non template, gitignore'd version), it will be included near the top
+#  of the main CMakeLists.txt, before cpr is included.
+
+# Example implementation
+
+set(ZLIB_LIBRARY "[vcpkg]/packages/zlib_x64-windows-static/lib/zlib.lib")
+set(ZLIB_INCLUDE_DIR "[vcpkg]/packages/zlib_x64-windows-static/include")
+set(CURL_ZLIB ON)
