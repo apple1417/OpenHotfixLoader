@@ -1,3 +1,7 @@
 [submodule "minhook"]
 	path = minhook
 	url = https://github.com/TsudaKageyu/minhook.git
+[submodule "cpr"]
+	path = cpr
+	url = https://github.com/libcpr/cpr.git
+	branch = 1.9.x
