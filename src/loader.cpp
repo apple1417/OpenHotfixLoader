@@ -8,6 +8,7 @@
 namespace ohl::loader {
 
 static const std::wstring HOTFIX_COMMAND = L"Spark";
+static const std::wstring NEWS_COMMAND = L"InjectNewsItem";
 
 static const std::wstring TYPE_11_PREFIX = L"SparkEarlyLevelPatchEntry,(1,11,0,";
 static const std::wstring TYPE_11_DELAY_TYPE = L"SparkEarlyLevelPatchEntry";
@@ -70,12 +71,18 @@ static void load_mod_file(const std::filesystem::path& path,
             continue;
         }
 
+        /**
+         * @brief Checks if the current line starts with the specified command.
+         *
+         * @param str The command string to check.
+         * @return True if the line starts with the command, false otherwise.
+         */
         auto is_command = [&](auto str) {
             return mod_line.compare(whitespace_end_pos, str.size(), str) == 0;
         };
 
         if (is_command(HOTFIX_COMMAND)) {
-            auto hotfix_type_end_pos = mod_line.find_first_of(',');
+            auto hotfix_type_end_pos = mod_line.find_first_of(',', whitespace_end_pos);
             if (hotfix_type_end_pos == std::wstring::npos) {
                 continue;
             }
@@ -96,6 +103,64 @@ static void load_mod_file(const std::filesystem::path& path,
             }
 
             mod_data.hotfixes.push_back({hotfix_type, hotfix});
+        } else if (is_command(NEWS_COMMAND)) {
+            /**
+             * @brief Extracts a csv-escaped field from the current line.
+             *
+             * @param start_pos The position of the first character of the field.
+             * @return A pair of the extracted string, and the position of the next field (or npos).
+             */
+            auto extract_csv_escaped = [&](auto start_pos) -> std::pair<std::wstring, size_t> {
+                // If the field is not escaped, simple comma search + return
+                if (mod_line[start_pos] != '"') {
+                    auto comma_pos = mod_line.find_first_of(',', start_pos);
+                    return {mod_line.substr(start_pos, comma_pos - start_pos),
+                            comma_pos == std::string::npos ? std::string::npos : comma_pos + 1};
+                }
+
+                std::wstringstream stream{};
+                auto quoted_start_pos = start_pos + 1;
+                auto quoted_end_pos = std::string::npos;
+                while (true) {
+                    quoted_end_pos = mod_line.find_first_of('"', quoted_start_pos);
+                    stream << mod_line.substr(quoted_start_pos, quoted_end_pos - quoted_start_pos);
+
+                    // If we reached the end of the line
+                    if (quoted_end_pos >= (mod_line.size() - 1)) {
+                        break;
+                    }
+
+                    // If this is not an escaped quote
+                    if (mod_line[quoted_end_pos + 1] != '"') {
+                        break;
+                    }
+
+                    stream << '"';
+                    // This might move past the end of the string, but will be caught on next loop
+                    quoted_start_pos = quoted_end_pos + 2;
+                }
+
+                auto comma_pos = mod_line.find_first_of(',', quoted_end_pos);
+                return {stream.str(),
+                        comma_pos == std::string::npos ? std::string::npos : comma_pos + 1};
+            };
+
+            auto header_start_pos = mod_line.find_first_of(',', whitespace_end_pos) + 1;
+            auto [header, header_end_pos] = extract_csv_escaped(header_start_pos);
+
+            if (header.size() == 0) {
+                continue;
+            }
+
+            if (header_end_pos == std::string::npos) {
+                mod_data.news_items.push_back({header, L"", L""});
+                continue;
+            }
+
+            auto [url, url_end_pos] = extract_csv_escaped(header_end_pos);
+            mod_data.news_items.push_back(
+                {header, url,
+                 url_end_pos == std::string::npos ? L"" : mod_line.substr(url_end_pos)});
         }
     }
 

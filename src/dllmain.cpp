@@ -34,6 +34,10 @@ static int32_t startup_thread(void*) {
         ohl::hooks::init();
         ohl::processing::init();
         ohl::loader::init();
+
+#ifdef DEBUG
+        ohl::loader::reload();
+#endif
     } catch (std::exception ex) {
         std::cout << "[OHL] Exception occured during initalization: " << ex.what() << "\n";
     }

@@ -36,6 +36,39 @@ one mod needs to be loaded before another, simply rename it so sorts later.
 
 
 # Notes for Modders
+## Commands
+OpenHotfixLoader supports a number of commands. All commands strip leading whitespace.
+
+### Hotfixes
+OpenHotfixLoader follows the standard hotfix format.
+
+```
+SparkPatchEntry,(1,1,0,),/Game/PlayerCharacters/_Shared/_Design/Sliding/ControlledMove_Global_Sliding.Default__ControlledMove_Global_Sliding_C,Duration.BaseValueConstant,0,,5000
+```
+
+Any line starting with `Spark` is considered to be a hotfix. Everything before the first comma is
+taken as the hotfix key, and will have an index automatically appended. Everything after the first
+comma is taken as the value.
+
+Type 11 hotfixes are automatically detected, moved to the front of the hotfix list, and have their
+delay hotfixes auto generated.
+
+### Inject News Item
+You can inject custom news items using `InjectNewsItem` commands.
+
+```
+InjectNewsItem,Header,https://url.to/image.png,News body, not visible in BL3
+```
+
+These commands consist of four comma seperated fields: the command, the header, the image url, and
+the body. The image url and body are optional. If you want to include a comma in the header or image
+url, use csv escaping - quote it, and use double quotes to insert a literal quote.
+
+```
+InjectNewsItem,"Header, which contains a comma and a pair of ""quotes""",https://url.to/image.png
+```
+
+## Misc Notes
 If you ever need to debug the exact hotfixes being applied, launch the game with the
 `--dump-hotfixes` command line argument. This will create a `hotfixes.dump` in win64 every time
 they're loaded.
