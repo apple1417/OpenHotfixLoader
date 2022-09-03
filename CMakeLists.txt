@@ -7,20 +7,24 @@ project(OpenHotfixLoader VERSION 1.2)
 set(PROJECT_VERSION_PREFIX "b")
 set(CMAKE_DEBUG_POSTFIX "-Debug")
 
+# CPR turns this on, so we need to force it back off
+option(BUILD_SHARED_LIBS "" OFF)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+
+add_subdirectory(cpr)
 add_subdirectory(minhook)
 
-find_library(shlwapi Shlwapi.lib)
+find_library(shlwapi Shlwapi.lib REQUIRED)
 
 configure_file(versioninfo.rc.in versioninfo.rc)
 configure_file(src/version.h.in inc/version.h)
 
 file(GLOB_RECURSE sources CONFIGURE_DEPENDS "src/*.c" "src/*.cpp" "src/*.h" "src/*.hpp")
 
-# Can't use pybind11_add_module cause Visual Studio won't let you debug it
 add_library(OpenHotfixLoader SHARED ${sources} "${CMAKE_CURRENT_BINARY_DIR}/versioninfo.rc")
 target_include_directories(OpenHotfixLoader PRIVATE "${PROJECT_BINARY_DIR}/inc" "src")
 
-target_link_libraries(OpenHotfixLoader PUBLIC minhook shlwapi)
+target_link_libraries(OpenHotfixLoader PUBLIC minhook shlwapi cpr::cpr)
 
 # CMake by default defines NDEBUG in release, we also want the opposite
 target_compile_definitions(OpenHotfixLoader PRIVATE "$<$<CONFIG:DEBUG>:DEBUG>")

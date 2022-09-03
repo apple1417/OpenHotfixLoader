@@ -2,7 +2,31 @@
 
 namespace ohl::util {
 
+std::string narrow(const std::wstring& wstr) {
+    if (wstr.empty()) {
+        return std::string();
+    }
+
+    auto num_chars = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), wstr.size(), NULL, 0, NULL, NULL);
+    char* str = reinterpret_cast<char*>(malloc((num_chars + 1) * sizeof(char)));
+    if (!str) {
+        throw std::runtime_error("Failed to convert utf16 string!");
+    }
+
+    WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), wstr.size(), str, num_chars, NULL, NULL);
+    str[num_chars] = L'\0';
+
+    std::string ret{str};
+    free(str);
+
+    return ret;
+}
+
 std::wstring widen(const std::string& str) {
+    if (str.empty()) {
+        return std::wstring();
+    }
+
     auto num_chars = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), str.size(), NULL, 0);
     wchar_t* wstr = reinterpret_cast<wchar_t*>(malloc((num_chars + 1) * sizeof(wchar_t)));
     if (!wstr) {

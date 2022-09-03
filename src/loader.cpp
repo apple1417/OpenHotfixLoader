@@ -57,7 +57,7 @@ struct mod_file_data {
 };
 
 static void load_mod_file(const std::filesystem::path&, std::vector<mod_file_data>&);
-static void load_mod_url(const std::string&, std::vector<mod_file_data>&);
+static void load_mod_url(const std::wstring&, std::vector<mod_file_data>&);
 
 // This default works, relative to the cwd, we'll try replace it later.
 static std::filesystem::path mod_dir = "ohl-mods";
@@ -215,6 +215,16 @@ static void load_mod_stream(std::istream& stream,
             }
 
             load_mod_file(path, file_list);
+        } else if (is_command(URL_COMMAND)) {
+            auto url = mod_line.substr(whitespace_end_pos + URL_COMMAND.size());
+
+            // Create new data if needed, as above
+            if (!mod_data.is_empty()) {
+                file_list.push_back(mod_data);
+                mod_data = default_data;
+            }
+
+            load_mod_url(url, file_list);
         }
     }
 
@@ -247,8 +257,6 @@ static void load_mod_file(const std::filesystem::path& path,
     mod_data.path = path;
 
     load_mod_stream(stream, mod_data, file_list);
-
-    return;
 }
 
 /**
@@ -258,7 +266,31 @@ static void load_mod_file(const std::filesystem::path& path,
  * @param file_list List of mod file data to append to.
  */
 static void load_mod_url(const std::wstring& url, std::vector<mod_file_data>& file_list) {
-    // TODO
+    // If we've already loaded this url, quit
+    if (std::find_if(file_list.begin(), file_list.end(), [&](auto item) {
+            return item.url.has_value() && item.url.value() == url;
+        }) != file_list.end()) {
+        return;
+    }
+
+    auto narrow_url = ohl::util::narrow(url);
+    auto resp = cpr::Get(cpr::Url{narrow_url});
+
+    if (resp.status_code == 0) {
+        std::cout << "[OHL] Error downloading '" << narrow_url << "': " << resp.error.message
+                  << "\n";
+        return;
+    } else if (resp.status_code >= 400) {
+        std::cout << "[OHL] Error downloading '" << narrow_url << "': " << resp.status_code << "\n";
+        return;
+    }
+
+    std::stringstream stream{resp.text};
+
+    mod_file_data mod_data{};
+    mod_data.url = url;
+
+    load_mod_stream(stream, mod_data, file_list);
 }
 
 /**

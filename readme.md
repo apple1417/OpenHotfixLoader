@@ -27,13 +27,15 @@ the main menu. If you're still having trouble, try install the latest
 
 ## Installing Hotfix Mods
 To install a hotfix mod, simply download it, and add it to the `ohl-mods` folder you just extracted.
+If you want to automatically download the latest version, simply create a URL shortcut and put it in
+this folder - just drag the download link out of your browser into Windows Explorer.
+
 If you edit mods while the game is open, you need to quit to title screen, then load back onto the
 main menu in order to reload them.
 
 Mods are loaded in numeric-alphabetical order - `A.txt` loads before `B.txt`, and `9.txt` before
 `10.txt`. This should be the same order which Windows Explorer displays when you sort by name. If
 one mod needs to be loaded before another, simply rename it so sorts later.
-
 
 # Notes for Modders
 ## Commands
@@ -84,6 +86,16 @@ exec "D:\My Mods\testing_mod.txt"
 ```
 
 Paths are taken relative to the `ohl-mods` folder (unless they're absolute to begin with).
+
+### URL
+You can download and execute a mod from a url using the `URL=` command. This has all the same
+semantics as executing a local file, as discussed above.
+
+```
+URL=https://url.to/mod.file
+```
+All content after the `=` is considered part of the url. This syntax is chosen to support Windows'
+URL shortcut files.
 
 ## Misc Notes
 If you ever need to debug the exact hotfixes being applied, launch the game with the

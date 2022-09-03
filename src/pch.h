@@ -7,6 +7,8 @@
 #include <Shlwapi.h>
 
 #ifdef __cplusplus
+#include <cpr/cpr.h>
+
 #include <array>
 #include <codecvt>
 #include <cstdint>
