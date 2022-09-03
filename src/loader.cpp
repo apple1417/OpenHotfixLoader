@@ -126,7 +126,12 @@ public:
     }
 
     virtual std::wstring get_display_name(void) const {
-        return this->url;
+        auto last_slash_pos = this->url.find_last_of('/');
+        if (last_slash_pos == std::string::npos) {
+            return this->url;
+        } else {
+            return this->url.substr(last_slash_pos + 1) + L" (url)";
+        }
     }
 
     virtual std::shared_ptr<mod_data> copy_metadata(void) const {
@@ -407,7 +412,7 @@ static news_item get_ohl_news_item(void) {
             }
             seen_files.insert(mod_data->get_full_name());
 
-            stream << mod_data->get_display_name() << L"\n";
+            stream << mod_data->get_display_name() << L",\n";
         }
 
         body = stream.str();
