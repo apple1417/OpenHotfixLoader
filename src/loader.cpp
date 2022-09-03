@@ -33,13 +33,24 @@ static const std::vector<std::wstring> TYPE_11_DELAY_MESHES = {
 static const std::wstring OHL_NEWS_ITEM_URL =
     L"https://raw.githubusercontent.com/apple1417/OpenHotfixLoader/master/news_icon.png";
 
+class mod_data;
+static void load_mod_file(const std::filesystem::path&, std::vector<std::shared_ptr<mod_data>>&);
+static void load_mod_url(const std::wstring&, std::vector<std::shared_ptr<mod_data>>&);
+
+// This default works, relative to the cwd, we'll try replace it later.
+static std::filesystem::path mod_dir = "ohl-mods";
+
+static std::mutex reloading_mutex;
+
+static std::vector<std::shared_ptr<mod_data>> mod_files{};
+static std::deque<hotfix> injected_hotfixes{};
+static std::deque<news_item> injected_news_items{};
+
 /**
- * @brief Struct holding all data about a given mod file.
- * @note Only one of path or url should have a value, the other should always be empty.
+ * @brief Base class holding data about a given mod file.
  */
-struct mod_file_data {
-    std::optional<std::filesystem::path> path = std::nullopt;
-    std::optional<std::wstring> url = std::nullopt;
+class mod_data {
+public:
     std::vector<hotfix> hotfixes{};
     std::vector<hotfix> type_11_hotfixes{};
     std::unordered_set<std::wstring> type_11_maps{};
@@ -54,19 +65,76 @@ struct mod_file_data {
         return this->hotfixes.size() == 0 && this->type_11_hotfixes.size() == 0 &&
                this->type_11_maps.size() == 0 && this->news_items.size() == 0;
     }
+
+    /**
+     * @brief Gets the full name of this mod file, which can be used to uniquely identify it.
+     *
+     * @return The mod's full name.
+     */
+    virtual std::wstring get_full_name(void) const = 0;
+
+    /**
+     * @brief Gets the display name of this mod file.
+     *
+     * @return The mod's display name.
+     */
+    virtual std::wstring get_display_name(void) const = 0;
+
+    /**
+     * @brief Creates a new object of the same type, with only the metadata fields set.
+     *
+     * @return The new object.
+     */
+    virtual std::shared_ptr<mod_data> copy_metadata(void) const = 0;
 };
 
-static void load_mod_file(const std::filesystem::path&, std::vector<mod_file_data>&);
-static void load_mod_url(const std::wstring&, std::vector<mod_file_data>&);
+/**
+ * @brief Class for mod file data based on a local file.
+ */
+class mod_data_file : public mod_data {
+public:
+    std::filesystem::path path;
 
-// This default works, relative to the cwd, we'll try replace it later.
-static std::filesystem::path mod_dir = "ohl-mods";
+    virtual std::wstring get_full_name(void) const {
+        return this->path.wstring();
+    }
 
-static std::mutex reloading_mutex;
+    virtual std::wstring get_display_name(void) const {
+        if (this->path.parent_path() == mod_dir) {
+            return this->path.filename().wstring();
+        } else {
+            return this->path.wstring();
+        }
+    }
 
-static std::vector<mod_file_data> mod_files{};
-static std::deque<hotfix> injected_hotfixes{};
-static std::deque<news_item> injected_news_items{};
+    virtual std::shared_ptr<mod_data> copy_metadata(void) const {
+        auto new_data = std::make_shared<mod_data_file>();
+        new_data->path = path;
+        return new_data;
+    }
+};
+
+/**
+ * @brief Class for mod file data based on a url.
+ */
+class mod_data_url : public mod_data {
+public:
+    std::wstring url;
+
+    virtual std::wstring get_full_name(void) const {
+        return this->url;
+    }
+
+    virtual std::wstring get_display_name(void) const {
+        return this->url;
+    }
+
+    virtual std::shared_ptr<mod_data> copy_metadata(void) const {
+        auto new_data = std::make_shared<mod_data_url>();
+        new_data->url = url;
+        return new_data;
+    }
+};
 
 /**
  * @brief Loads mod from a stream.
@@ -76,9 +144,9 @@ static std::deque<news_item> injected_news_items{};
  * @param file_list List of mod file data to append to.
  */
 static void load_mod_stream(std::istream& stream,
-                            const mod_file_data& default_data,
-                            std::vector<mod_file_data>& file_list) {
-    auto mod_data = default_data;
+                            const mod_data& default_data,
+                            std::vector<std::shared_ptr<mod_data>>& file_list) {
+    auto mod_data = default_data.copy_metadata();
     for (std::string narrow_mod_line; std::getline(stream, narrow_mod_line);) {
         std::wstring mod_line = ohl::util::widen(narrow_mod_line);
 
@@ -117,13 +185,13 @@ static void load_mod_stream(std::istream& stream,
                 auto map_end_pos = mod_line.find_first_of(')', map_start_pos);
                 if (map_end_pos != std::string::npos) {
                     auto map = mod_line.substr(map_start_pos, map_end_pos - map_start_pos);
-                    mod_data.type_11_maps.insert(map);
-                    mod_data.type_11_hotfixes.push_back({hotfix_type, hotfix});
+                    mod_data->type_11_maps.insert(map);
+                    mod_data->type_11_hotfixes.push_back({hotfix_type, hotfix});
                     continue;
                 }
             }
 
-            mod_data.hotfixes.push_back({hotfix_type, hotfix});
+            mod_data->hotfixes.push_back({hotfix_type, hotfix});
         } else if (is_command(NEWS_COMMAND)) {
             /**
              * @brief Extracts a csv-escaped field from the current line.
@@ -174,12 +242,12 @@ static void load_mod_stream(std::istream& stream,
             }
 
             if (header_end_pos == std::string::npos) {
-                mod_data.news_items.push_back({header, L"", L""});
+                mod_data->news_items.push_back({header, L"", L""});
                 continue;
             }
 
             auto [url, url_end_pos] = extract_csv_escaped(header_end_pos);
-            mod_data.news_items.push_back(
+            mod_data->news_items.push_back(
                 {header, url,
                  url_end_pos == std::string::npos ? L"" : mod_line.substr(url_end_pos)});
         } else if (is_command(EXEC_COMMAND)) {
@@ -209,9 +277,9 @@ static void load_mod_stream(std::istream& stream,
             // Push our current data, and create a new one for use after loading the file.
             // Required to keep proper ordering, the executed file should act as if it was included
             //  in the middle of the file we're currently reading.
-            if (!mod_data.is_empty()) {
+            if (!mod_data->is_empty()) {
                 file_list.push_back(mod_data);
-                mod_data = default_data;
+                mod_data = default_data.copy_metadata();
             }
 
             load_mod_file(path, file_list);
@@ -219,16 +287,16 @@ static void load_mod_stream(std::istream& stream,
             auto url = mod_line.substr(whitespace_end_pos + URL_COMMAND.size());
 
             // Create new data if needed, as above
-            if (!mod_data.is_empty()) {
+            if (!mod_data->is_empty()) {
                 file_list.push_back(mod_data);
-                mod_data = default_data;
+                mod_data = default_data.copy_metadata();
             }
 
             load_mod_url(url, file_list);
         }
     }
 
-    if (!mod_data.is_empty()) {
+    if (!mod_data->is_empty()) {
         file_list.push_back(mod_data);
     }
 }
@@ -240,10 +308,10 @@ static void load_mod_stream(std::istream& stream,
  * @param file_list List of mod file data to append to.
  */
 static void load_mod_file(const std::filesystem::path& path,
-                          std::vector<mod_file_data>& file_list) {
+                          std::vector<std::shared_ptr<mod_data>>& file_list) {
     // If we've already loaded this file, quit
     if (std::find_if(file_list.begin(), file_list.end(), [&](auto item) {
-            return item.path.has_value() && item.path.value() == path;
+            return item->get_full_name() == path;
         }) != file_list.end()) {
         return;
     }
@@ -253,7 +321,7 @@ static void load_mod_file(const std::filesystem::path& path,
         return;
     }
 
-    mod_file_data mod_data{};
+    mod_data_file mod_data{};
     mod_data.path = path;
 
     load_mod_stream(stream, mod_data, file_list);
@@ -265,10 +333,10 @@ static void load_mod_file(const std::filesystem::path& path,
  * @param url The url to load.
  * @param file_list List of mod file data to append to.
  */
-static void load_mod_url(const std::wstring& url, std::vector<mod_file_data>& file_list) {
+static void load_mod_url(const std::wstring& url, std::vector<std::shared_ptr<mod_data>>& file_list) {
     // If we've already loaded this url, quit
     if (std::find_if(file_list.begin(), file_list.end(), [&](auto item) {
-            return item.url.has_value() && item.url.value() == url;
+            return item->get_full_name() == url;
         }) != file_list.end()) {
         return;
     }
@@ -276,6 +344,7 @@ static void load_mod_url(const std::wstring& url, std::vector<mod_file_data>& fi
     auto narrow_url = ohl::util::narrow(url);
 
     // An empty string tells libcurl to accept whatever encodings it can
+    // TODO: async
     auto resp = cpr::Get(cpr::Url{narrow_url}, cpr::AcceptEncoding{{""}});
 
     if (resp.status_code == 0) {
@@ -289,7 +358,7 @@ static void load_mod_url(const std::wstring& url, std::vector<mod_file_data>& fi
 
     std::stringstream stream{resp.text};
 
-    mod_file_data mod_data{};
+    mod_data_url mod_data{};
     mod_data.url = url;
 
     load_mod_stream(stream, mod_data, file_list);
@@ -331,29 +400,14 @@ static news_item get_ohl_news_item(void) {
         std::wstringstream stream{};
         stream << L"Loaded files:\n";
 
-        std::unordered_set<std::filesystem::path> seen_files{};
-        std::unordered_set<std::wstring> seen_urls{};
-        for (const auto& file_data : mod_files) {
-            if (file_data.path.has_value()) {
-                auto path = *file_data.path;
-                if (seen_files.count(path) > 0) {
-                    continue;
-                }
-                seen_files.insert(path);
-
-                if (path.parent_path() == mod_dir) {
-                    stream << path.filename().wstring() << L"\n";
-                } else {
-                    stream << path.wstring() << L"\n";
-                }
-            } else {
-                auto url = *file_data.url;
-                if (seen_urls.count(url) > 0) {
-                    continue;
-                }
-                seen_urls.insert(url);
-                stream << url << L"\n";
+        std::unordered_set<std::wstring> seen_files{};
+        for (const auto& mod_data : mod_files) {
+            if (seen_files.count(mod_data->get_full_name()) > 0) {
+                continue;
             }
+            seen_files.insert(mod_data->get_full_name());
+
+            stream << mod_data->get_display_name() << L"\n";
         }
 
         body = stream.str();
@@ -388,13 +442,13 @@ static void reload_impl(void) {
     std::deque<hotfix> type_11_hotfixes;
     std::unordered_set<std::wstring> type_11_maps;
     for (const auto& data : mod_files) {
-        injected_hotfixes.insert(injected_hotfixes.end(), data.hotfixes.begin(),
-                                 data.hotfixes.end());
-        injected_news_items.insert(injected_news_items.end(), data.news_items.begin(),
-                                   data.news_items.end());
-        type_11_hotfixes.insert(type_11_hotfixes.end(), data.type_11_hotfixes.begin(),
-                                data.type_11_hotfixes.end());
-        type_11_maps.insert(data.type_11_maps.begin(), data.type_11_maps.end());
+        injected_hotfixes.insert(injected_hotfixes.end(), data->hotfixes.begin(),
+                                 data->hotfixes.end());
+        injected_news_items.insert(injected_news_items.end(), data->news_items.begin(),
+                                   data->news_items.end());
+        type_11_hotfixes.insert(type_11_hotfixes.end(), data->type_11_hotfixes.begin(),
+                                data->type_11_hotfixes.end());
+        type_11_maps.insert(data->type_11_maps.begin(), data->type_11_maps.end());
     }
 
     // Add type 11s to the front of the list, and their delays after them but before the rest
