@@ -7,10 +7,10 @@
 
 namespace ohl::loader {
 
-static const std::wstring HOTFIX_COMMAND = L"Spark";
-static const std::wstring NEWS_COMMAND = L"InjectNewsItem";
+static const std::wstring HOTFIX_COMMAND = L"spark";
+static const std::wstring NEWS_COMMAND = L"injectnewsitem";
 
-static const std::wstring TYPE_11_PREFIX = L"SparkEarlyLevelPatchEntry,(1,11,0,";
+static const std::wstring TYPE_11_PREFIX = L"sparkearlylevelpatchentry,(1,11,0,";
 static const std::wstring TYPE_11_DELAY_TYPE = L"SparkEarlyLevelPatchEntry";
 static const std::wstring TYPE_11_DELAY_VALUE =
     L"(1,1,0,{map}),/Game/Pickups/Ammo/"
@@ -71,14 +71,19 @@ static void load_mod_file(const std::filesystem::path& path,
             continue;
         }
 
+        auto lower_mod_line = mod_line;
+        std::transform(lower_mod_line.begin(), lower_mod_line.end(), lower_mod_line.begin(),
+                       std::towlower);
+
         /**
          * @brief Checks if the current line starts with the specified command.
+         * @note Should compare against lowercase strings.
          *
          * @param str The command string to check.
          * @return True if the line starts with the command, false otherwise.
          */
         auto is_command = [&](auto str) {
-            return mod_line.compare(whitespace_end_pos, str.size(), str) == 0;
+            return lower_mod_line.compare(whitespace_end_pos, str.size(), str) == 0;
         };
 
         if (is_command(HOTFIX_COMMAND)) {
@@ -91,11 +96,11 @@ static void load_mod_file(const std::filesystem::path& path,
                 mod_line.substr(whitespace_end_pos, hotfix_type_end_pos - whitespace_end_pos);
             auto hotfix = mod_line.substr(hotfix_type_end_pos + 1);
 
-            if (mod_line.rfind(TYPE_11_PREFIX) == 0) {
-                auto map_end_pos = mod_line.find_first_of(')');
+            if (is_command(TYPE_11_PREFIX)) {
+                auto map_start_pos = whitespace_end_pos + TYPE_11_PREFIX.size();
+                auto map_end_pos = mod_line.find_first_of(')', map_start_pos);
                 if (map_end_pos != std::string::npos) {
-                    auto map =
-                        mod_line.substr(TYPE_11_PREFIX.size(), map_end_pos - TYPE_11_PREFIX.size());
+                    auto map = mod_line.substr(map_start_pos, map_end_pos - map_start_pos);
                     mod_data.type_11_maps.insert(map);
                     mod_data.type_11_hotfixes.push_back({hotfix_type, hotfix});
                     continue;
