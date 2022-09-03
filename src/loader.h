@@ -27,7 +27,8 @@ struct news_item {
 void init(void);
 
 /**
- * @brief Reloads the hotfix list.
+ * @brief Starts reloads the hotfix list.
+ * @note Runs in a thread, `get_hotfixes` or `get_news_items` calls will block until it compeltes.
  */
 void reload(void);
 

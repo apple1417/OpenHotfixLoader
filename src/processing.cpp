@@ -220,6 +220,11 @@ void init(void) {
     dump_hotfixes = std::wstring(GetCommandLine()).find(L"--dump-hotfixes") != std::string::npos;
 }
 
+void handle_get_verification(void) {
+    std::wcout << L"[OHL] Starting to reload mods\n";
+    ohl::loader::reload();
+}
+
 void handle_discovery_from_json(FJsonObject** json) {
     gather_vf_tables(*json);
 
@@ -243,7 +248,6 @@ void handle_discovery_from_json(FJsonObject** json) {
         throw std::runtime_error("Didn't find vf tables in time!");
     }
 
-    ohl::loader::reload();
     auto hotfixes = ohl::loader::get_hotfixes();
 
     auto params = micropatch->get<FJsonValueArray>(L"parameters");

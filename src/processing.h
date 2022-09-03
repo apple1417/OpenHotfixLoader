@@ -10,6 +10,12 @@ namespace ohl::processing {
 void init(void);
 
 /**
+ * @brief Handles `GbxSparkSdk::Discovery::Api::GetServicesVerification` calls, using them to start
+ *        reloading hotfixes.
+ */
+void handle_get_verification(void);
+
+/**
  * @brief Handles `GbxSparkSdk::Discovery::Services::FromJson` calls, inserting our custom hotfixes.
  *
  * @param json Unreal json objects containing the received data.

@@ -5,6 +5,7 @@
 
 using ohl::unreal::FJsonObject;
 using ohl::unreal::FSparkRequest;
+using ohl::unreal::FString;
 using ohl::unreal::TSharedPtr;
 
 namespace ohl::hooks {
@@ -14,6 +15,16 @@ namespace ohl::hooks {
 typedef void* (*fmemory_malloc)(size_t count, uint32_t align);
 typedef void* (*fmemory_realloc)(void* original, size_t count, uint32_t align);
 typedef void (*fmemory_free)(void* data);
+typedef int32_t (*get_services_verification)(void* this_api,
+                                             FString* uuid,
+                                             FString* consumer,
+                                             FString* platform,
+                                             FString* hardware,
+                                             FString* title,
+                                             void* g,
+                                             void* h,
+                                             void* i,
+                                             void* j);
 typedef bool (*discovery_from_json)(void* this_service, FJsonObject** json);
 typedef bool (*news_from_json)(void* this_response, FJsonObject** json);
 typedef void (*add_image_to_cache)(void* this_image_manager, TSharedPtr<FSparkRequest>* req);
@@ -25,6 +36,7 @@ struct game_functions {
     fmemory_malloc malloc;
     fmemory_realloc realloc;
     fmemory_free free;
+    get_services_verification get_verification;
     discovery_from_json discovery;
     news_from_json news;
     add_image_to_cache image_cache;
@@ -72,6 +84,14 @@ static const sigscan_pattern realloc_pattern = make_pattern(
 static const sigscan_pattern free_pattern = make_pattern(
     "\x48\x85\xC9\x74\x00\x53\x48\x83\xEC\x20\x48\x8B\xD9\x48\x8B\x0D\x00\x00\x00\x00",
     "\xFF\xFF\xFF\xFF\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x00\x00\x00\x00");
+
+static const sigscan_pattern get_verification_pattern = make_pattern(
+    "\x40\x55\x53\x56\x57\x41\x54\x41\x55\x41\x56\x41\x57\x48\x8D\xAC\x24\x00\x00\x00\x00\x48\x81"
+    "\xEC\xE8\x02\x00\x00\x48\x8B\x05\x00\x00\x00\x00\x48\x33\xC4\x48\x89\x85\x00\x00\x00\x00\x48"
+    "\x8B\x85\x00\x00\x00\x00\x4D\x8B\xE0",
+    "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x00\x00\x00\x00\xFF\xFF"
+    "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x00\x00\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF\x00\x00\x00\x00\xFF"
+    "\xFF\xFF\x00\x00\x00\x00\xFF\xFF\xFF");
 
 static const sigscan_pattern discovery_pattern = make_pattern(
     "\x40\x55\x53\x57\x48\x8D\x6C\x24\x00\x48\x81\xEC\x90\x00\x00\x00\x48\x83\x3A\x00\x48\x8B\xDA"
@@ -126,6 +146,41 @@ static T sigscan(void* start, size_t size, const sigscan_pattern& pattern) {
 #pragma endregion
 
 #pragma region Wrappers
+
+/**
+ * @brief Detour function for `GbxSparkSdk::Discovery::Api::GetServicesVerification`
+ *
+ * @param this_api The api object this was called on.
+ * @param uuid The authentication uuid.
+ * @param consumer The consumer of this api call (i.e. `client`).
+ * @param platform The platform this call is on (i.e. `steam`/`epic`)
+ * @param hardware The hardware this call is on (i.e. `pc`)
+ * @param title The title this call is for (i.e. `oak`/`daffodil`)
+ * @param g ¯\_(ツ)_/¯
+ * @param h ¯\_(ツ)_/¯
+ * @param i ¯\_(ツ)_/¯
+ * @param j ¯\_(ツ)_/¯
+ * @return ¯\_(ツ)_/¯
+ */
+static get_services_verification original_get_verification = nullptr;
+bool detour_get_verification(void* this_api,
+                             FString* uuid,
+                             FString* consumer,
+                             FString* platform,
+                             FString* hardware,
+                             FString* title,
+                             void* g,
+                             void* h,
+                             void* i,
+                             void* j) {
+    try {
+        ohl::processing::handle_get_verification();
+    } catch (std::exception ex) {
+        std::cout << "[OHL] Exception occured in get verification hook: " << ex.what() << "\n";
+    }
+
+    return original_get_verification(this_api, uuid, consumer, platform, hardware, title, g, h, i, j);
+}
 
 /**
  * @brief Detour function for `GbxSparkSdk::Discovery::Services::FromJson`.
@@ -236,6 +291,8 @@ void init(void) {
     funcs.malloc = sigscan<fmemory_malloc>(allocation_base, module_length, malloc_pattern);
     funcs.realloc = sigscan<fmemory_realloc>(allocation_base, module_length, realloc_pattern);
     funcs.free = sigscan<fmemory_free>(allocation_base, module_length, free_pattern);
+    funcs.get_verification = sigscan<get_services_verification>(allocation_base, module_length,
+                                                                get_verification_pattern);
     funcs.discovery =
         sigscan<discovery_from_json>(allocation_base, module_length, discovery_pattern);
     funcs.news = sigscan<news_from_json>(allocation_base, module_length, news_pattern);
@@ -245,6 +302,16 @@ void init(void) {
     auto ret = MH_Initialize();
     if (ret != MH_OK) {
         throw std::runtime_error("MH_Initialize failed " + std::to_string(ret));
+    }
+
+    ret = MH_CreateHook(funcs.get_verification, &detour_get_verification,
+                        reinterpret_cast<LPVOID*>(&original_get_verification));
+    if (ret != MH_OK) {
+        throw std::runtime_error("MH_CreateHook failed " + std::to_string(ret));
+    }
+    ret = MH_EnableHook(funcs.get_verification);
+    if (ret != MH_OK) {
+        throw std::runtime_error("MH_EnableHook failed " + std::to_string(ret));
     }
 
     ret = MH_CreateHook(funcs.discovery, &detour_discovery_from_json,
