@@ -3,8 +3,8 @@
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-project(OpenHotfixLoader VERSION 1.3)
-set(PROJECT_VERSION_PREFIX "b")
+project(OpenHotfixLoader VERSION 1.4)
+set(PROJECT_VERSION_PREFIX "v")
 set(CMAKE_DEBUG_POSTFIX "-Debug")
 
 # CPR turns this on, so we need to force it back off
