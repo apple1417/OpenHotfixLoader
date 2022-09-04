@@ -334,12 +334,20 @@ void handle_news_from_json(ohl::unreal::FJsonObject** json) {
                                     {L"body", create_json_string(news_item.body)}}});
         auto contents_arr = create_json_array({create_json_value_object(contents_obj)});
 
-        auto meta_tag_obj =
+        auto image_meta_tag_obj =
             create_json_object<1>({{{L"tag", create_json_string(L"img_game_sm_noloc")}}});
-        auto tags_obj =
-            create_json_object<2>({{{L"meta_tag", create_json_value_object(meta_tag_obj)},
-                                    {L"value", create_json_string(news_item.url)}}});
-        auto tags_arr = create_json_array({create_json_value_object(tags_obj)});
+        auto image_tags_obj =
+            create_json_object<2>({{{L"meta_tag", create_json_value_object(image_meta_tag_obj)},
+                                    {L"value", create_json_string(news_item.image_url)}}});
+
+        auto article_meta_tag_obj =
+            create_json_object<1>({{{L"tag", create_json_string(L"url_learn_more_noloc")}}});
+        auto article_tags_obj =
+            create_json_object<2>({{{L"meta_tag", create_json_value_object(article_meta_tag_obj)},
+                                    {L"value", create_json_string(news_item.article_url)}}});
+
+        auto tags_arr = create_json_array(
+            {create_json_value_object(image_tags_obj), create_json_value_object(article_tags_obj)});
 
         auto availablities_obj =
             create_json_object<1>({{{L"startTime", create_json_string(get_current_time_str())}}});
@@ -364,7 +372,7 @@ bool handle_add_image_to_cache(TSharedPtr<FSparkRequest>* req) {
 
     auto news_items = ohl::loader::get_news_items();
     auto may_continue = std::find_if(news_items.begin(), news_items.end(), [&](auto item) {
-                            return item.url == url;
+                            return item.image_url == url;
                         }) == news_items.end();
 
     if (!may_continue) {

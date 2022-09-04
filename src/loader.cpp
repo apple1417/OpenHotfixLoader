@@ -30,8 +30,11 @@ static const std::vector<std::wstring> TYPE_11_DELAY_MESHES = {
     L"/Game/Pickups/Ammo/Model/Meshes/SM_ammo_pistol.SM_ammo_pistol",
 };
 
-static const std::wstring OHL_NEWS_ITEM_URL =
+static const std::wstring OHL_NEWS_ITEM_IMAGE_URL =
     L"https://raw.githubusercontent.com/apple1417/OpenHotfixLoader/master/news_icon.png";
+
+static const std::wstring OHL_NEWS_ITEM_ARTICLE_URL =
+    L"https://github.com/apple1417/OpenHotfixLoader/releases";
 
 class mod_data;
 static void load_mod_file(const std::filesystem::path&, std::vector<std::shared_ptr<mod_data>>&);
@@ -50,7 +53,7 @@ static std::deque<news_item> injected_news_items{};
  * @brief Base class holding data about a given mod file.
  */
 class mod_data {
-public:
+   public:
     std::vector<hotfix> hotfixes{};
     std::vector<hotfix> type_11_hotfixes{};
     std::unordered_set<std::wstring> type_11_maps{};
@@ -92,12 +95,10 @@ public:
  * @brief Class for mod file data based on a local file.
  */
 class mod_data_file : public mod_data {
-public:
+   public:
     std::filesystem::path path;
 
-    virtual std::wstring get_full_name(void) const {
-        return this->path.wstring();
-    }
+    virtual std::wstring get_full_name(void) const { return this->path.wstring(); }
 
     virtual std::wstring get_display_name(void) const {
         if (this->path.parent_path() == mod_dir) {
@@ -118,12 +119,10 @@ public:
  * @brief Class for mod file data based on a url.
  */
 class mod_data_url : public mod_data {
-public:
+   public:
     std::wstring url;
 
-    virtual std::wstring get_full_name(void) const {
-        return this->url;
-    }
+    virtual std::wstring get_full_name(void) const { return this->url; }
 
     virtual std::wstring get_display_name(void) const {
         auto last_slash_pos = this->url.find_last_of('/');
@@ -242,19 +241,22 @@ static void load_mod_stream(std::istream& stream,
             auto header_start_pos = mod_line.find_first_of(',', whitespace_end_pos) + 1;
             auto [header, header_end_pos] = extract_csv_escaped(header_start_pos);
 
-            if (header.size() == 0) {
-                continue;
-            }
-
             if (header_end_pos == std::string::npos) {
-                mod_data->news_items.push_back({header, L"", L""});
+                mod_data->news_items.push_back({header, L"", L"", L""});
                 continue;
             }
 
-            auto [url, url_end_pos] = extract_csv_escaped(header_end_pos);
-            mod_data->news_items.push_back(
-                {header, url,
-                 url_end_pos == std::string::npos ? L"" : mod_line.substr(url_end_pos)});
+            auto [image_url, image_url_end_pos] = extract_csv_escaped(header_end_pos);
+            if (image_url_end_pos == std::string::npos) {
+                mod_data->news_items.push_back({header, image_url, L"", L""});
+                continue;
+            }
+
+            auto [article_url, article_url_end_pos] = extract_csv_escaped(image_url_end_pos);
+            mod_data->news_items.push_back({header, image_url, article_url,
+                                            article_url_end_pos == std::string::npos
+                                                ? L""
+                                                : mod_line.substr(article_url_end_pos)});
         } else if (is_command(EXEC_COMMAND)) {
             auto exec_end_pos = whitespace_end_pos + EXEC_COMMAND.size();
             if (WHITESPACE.find(mod_line[exec_end_pos]) == std::string::npos) {
@@ -315,9 +317,8 @@ static void load_mod_stream(std::istream& stream,
 static void load_mod_file(const std::filesystem::path& path,
                           std::vector<std::shared_ptr<mod_data>>& file_list) {
     // If we've already loaded this file, quit
-    if (std::find_if(file_list.begin(), file_list.end(), [&](auto item) {
-            return item->get_full_name() == path;
-        }) != file_list.end()) {
+    if (std::find_if(file_list.begin(), file_list.end(),
+                     [&](auto item) { return item->get_full_name() == path; }) != file_list.end()) {
         return;
     }
 
@@ -338,11 +339,11 @@ static void load_mod_file(const std::filesystem::path& path,
  * @param url The url to load.
  * @param file_list List of mod file data to append to.
  */
-static void load_mod_url(const std::wstring& url, std::vector<std::shared_ptr<mod_data>>& file_list) {
+static void load_mod_url(const std::wstring& url,
+                         std::vector<std::shared_ptr<mod_data>>& file_list) {
     // If we've already loaded this url, quit
-    if (std::find_if(file_list.begin(), file_list.end(), [&](auto item) {
-            return item->get_full_name() == url;
-        }) != file_list.end()) {
+    if (std::find_if(file_list.begin(), file_list.end(),
+                     [&](auto item) { return item->get_full_name() == url; }) != file_list.end()) {
         return;
     }
 
@@ -418,7 +419,7 @@ static news_item get_ohl_news_item(void) {
         body = stream.str();
     }
 
-    return {header, OHL_NEWS_ITEM_URL, body};
+    return {header, OHL_NEWS_ITEM_IMAGE_URL, OHL_NEWS_ITEM_ARTICLE_URL, body};
 }
 
 /**

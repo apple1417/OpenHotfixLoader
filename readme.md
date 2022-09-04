@@ -60,12 +60,13 @@ delay hotfixes auto generated.
 You can inject custom news items using `InjectNewsItem` commands.
 
 ```
-InjectNewsItem,Header,https://url.to/image.png,News body, not visible in BL3
+InjectNewsItem,Header,https://url.to/image.png,https://url.to/article,News body, not visible in BL3
 ```
 
-These commands consist of four comma seperated fields: the command, the header, the image url, and
-the body. The image url and body are optional. If you want to include a comma in the header or image
-url, use csv escaping - quote it, and use double quotes to insert a literal quote.
+These commands consist of five comma seperated fields: the command, the header, the image url, the
+article url, and the body. You only have to specify the fields you're using, no need for trailing
+commas if you only have a header. If you want to include a comma in the header or image url, use csv
+escaping - quote it, and use double quotes to insert a literal quote.
 
 ```
 InjectNewsItem,"Header, which contains a comma and a pair of ""quotes""",https://url.to/image.png

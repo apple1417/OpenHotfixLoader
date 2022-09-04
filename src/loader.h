@@ -17,7 +17,8 @@ struct hotfix {
  */
 struct news_item {
     std::wstring header;
-    std::wstring url;
+    std::wstring image_url;
+    std::wstring article_url;
     std::wstring body;
 };
 
