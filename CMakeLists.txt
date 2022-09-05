@@ -17,6 +17,8 @@ endif()
 
 add_subdirectory(cpr)
 add_subdirectory(minhook)
+add_subdirectory(plog)
+include_directories("plog/include")
 
 find_library(shlwapi Shlwapi.lib REQUIRED)
 

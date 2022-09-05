@@ -1,4 +1,6 @@
 #include <pch.h>
+#include <plog/Initializers/RollingFileInitializer.h>
+#include <plog/Appenders/ConsoleAppender.h>
 
 /**
  * @brief Paths to the game exe and this dll.

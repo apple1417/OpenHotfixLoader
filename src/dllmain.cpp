@@ -26,9 +26,11 @@ static int32_t startup_thread(void*) {
         if (GetModuleFileName(this_module, buf, sizeof(buf))) {
             dll_path = std::filesystem::path(std::wstring(buf));
         }
+        static plog::ConsoleAppender<plog::TxtFormatter> consoleAppender;
+        plog::init(plog::debug, "OpenHotfixLoader.log").addAppender(&consoleAppender);
 
 #ifdef DEBUG
-        std::cout << "[OHL] Running in debug mode";
+        LOGI << "[OHL] Running in debug mode";
 #endif
 
         ohl::hooks::init();
@@ -39,7 +41,7 @@ static int32_t startup_thread(void*) {
         ohl::loader::reload();
 #endif
     } catch (std::exception ex) {
-        std::cout << "[OHL] Exception occured during initalization: " << ex.what() << "\n";
+        LOGI << "[OHL] Exception occured during initalization: " << ex.what() << "\n";
     }
 
     return 1;

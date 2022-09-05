@@ -8,6 +8,7 @@
 
 #ifdef __cplusplus
 #include <cpr/cpr.h>
+#include <plog/Log.h>
 
 #include <array>
 #include <codecvt>
