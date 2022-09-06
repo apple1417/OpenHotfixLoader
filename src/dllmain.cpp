@@ -4,6 +4,8 @@
 #include "loader.h"
 #include "processing.h"
 
+static const std::string LOG_FILE_NAME = "OpenHotfixLoader.log";
+
 static HMODULE this_module;
 
 std::filesystem::path exe_path = "";
@@ -26,11 +28,13 @@ static int32_t startup_thread(void*) {
         if (GetModuleFileName(this_module, buf, sizeof(buf))) {
             dll_path = std::filesystem::path(std::wstring(buf));
         }
-        static plog::ConsoleAppender<plog::TxtFormatter> consoleAppender;
-        plog::init(plog::debug, "OpenHotfixLoader.log").addAppender(&consoleAppender);
+
+        static plog::ConsoleAppender<plog::MessageOnlyFormatter> consoleAppender;
+        plog::init(plog::debug, dll_path.replace_filename(LOG_FILE_NAME).c_str())
+            .addAppender(&consoleAppender);
 
 #ifdef DEBUG
-        LOGI << "[OHL] Running in debug mode";
+        LOGD << "[OHL] Running in debug mode";
 #endif
 
         ohl::hooks::init();
@@ -41,7 +45,7 @@ static int32_t startup_thread(void*) {
         ohl::loader::reload();
 #endif
     } catch (std::exception ex) {
-        LOGI << "[OHL] Exception occured during initalization: " << ex.what() << "\n";
+        LOGF << "[OHL] Exception occured during initalization: " << ex.what() << "\n";
     }
 
     return 1;

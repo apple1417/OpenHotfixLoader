@@ -7,7 +7,8 @@ std::string narrow(const std::wstring& wstr) {
         return std::string();
     }
 
-    auto num_chars = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), wstr.size(), NULL, 0, NULL, NULL);
+    auto num_chars =
+        WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), wstr.size(), NULL, 0, NULL, NULL);
     char* str = reinterpret_cast<char*>(malloc((num_chars + 1) * sizeof(char)));
     if (!str) {
         throw std::runtime_error("Failed to convert utf16 string!");
