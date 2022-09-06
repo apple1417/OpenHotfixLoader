@@ -345,12 +345,12 @@ void init(void) {
         throw std::runtime_error("MH_EnableHook failed " + std::to_string(ret));
     }
 
-    ret = MH_CreateHook( (LPVOID) funcs.image_cache, (LPVOID) &detour_add_image_to_cache,
+    ret = MH_CreateHook((LPVOID) funcs.image_cache, (LPVOID) &detour_add_image_to_cache,
                         reinterpret_cast<LPVOID*>(&original_add_image_to_cache));
     if (ret != MH_OK) {
         throw std::runtime_error("MH_CreateHook failed " + std::to_string(ret));
     }
-    ret = MH_EnableHook( (LPVOID) funcs.image_cache);
+    ret = MH_EnableHook((LPVOID) funcs.image_cache);
     if (ret != MH_OK) {
         throw std::runtime_error("MH_EnableHook failed " + std::to_string(ret));
     }
