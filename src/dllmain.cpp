@@ -30,7 +30,7 @@ static int32_t startup_thread(void*) {
         }
 
         static plog::ConsoleAppender<plog::MessageOnlyFormatter> consoleAppender;
-        plog::init(plog::debug, dll_path.replace_filename(LOG_FILE_NAME).c_str())
+        plog::init(plog::debug, std::filesystem::path(dll_path).replace_filename(LOG_FILE_NAME).c_str())
             .addAppender(&consoleAppender);
 
 #ifdef DEBUG

@@ -483,7 +483,7 @@ static void reload_impl(void) {
 
 void init(void) {
     if (std::filesystem::exists(dll_path)) {
-        mod_dir = dll_path.remove_filename() / mod_dir;
+        mod_dir = std::filesystem::path(dll_path).remove_filename() / mod_dir;
     }
 }
 
