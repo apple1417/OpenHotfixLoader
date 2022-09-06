@@ -17,6 +17,7 @@ endif()
 
 add_subdirectory(cpr)
 add_subdirectory(minhook)
+add_subdirectory(plog)
 
 find_library(shlwapi Shlwapi.lib REQUIRED)
 
@@ -28,7 +29,7 @@ file(GLOB_RECURSE sources CONFIGURE_DEPENDS "src/*.c" "src/*.cpp" "src/*.h" "src
 add_library(OpenHotfixLoader SHARED ${sources} "${CMAKE_CURRENT_BINARY_DIR}/versioninfo.rc")
 target_include_directories(OpenHotfixLoader PRIVATE "${PROJECT_BINARY_DIR}/inc" "src")
 
-target_link_libraries(OpenHotfixLoader PUBLIC minhook shlwapi cpr::cpr)
+target_link_libraries(OpenHotfixLoader PUBLIC minhook shlwapi cpr::cpr plog)
 
 # CMake by default defines NDEBUG in release, we also want the opposite
 target_compile_definitions(OpenHotfixLoader PRIVATE "$<$<CONFIG:DEBUG>:DEBUG>")

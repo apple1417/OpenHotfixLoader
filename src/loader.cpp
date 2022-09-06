@@ -324,6 +324,7 @@ static void load_mod_file(const std::filesystem::path& path,
 
     std::ifstream stream{path};
     if (!stream.is_open()) {
+        LOGE << L"[OHL]: Error opening file '" << path << "'\n";
         return;
     }
 
@@ -354,11 +355,10 @@ static void load_mod_url(const std::wstring& url,
     auto resp = cpr::Get(cpr::Url{narrow_url}, cpr::AcceptEncoding{{""}});
 
     if (resp.status_code == 0) {
-        std::cout << "[OHL] Error downloading '" << narrow_url << "': " << resp.error.message
-                  << "\n";
+        LOGE << "[OHL] Error downloading '" << narrow_url << "': " << resp.error.message << "\n";
         return;
     } else if (resp.status_code >= 400) {
-        std::cout << "[OHL] Error downloading '" << narrow_url << "': " << resp.status_code << "\n";
+        LOGE << "[OHL] Error downloading '" << narrow_url << "': " << resp.status_code << "\n";
         return;
     }
 
@@ -478,7 +478,7 @@ static void reload_impl(void) {
 
     injected_news_items.push_front(get_ohl_news_item());
 
-    std::wcout << L"[OHL] " << injected_news_items[0].body << "\n";
+    LOGI << L"[OHL] " << injected_news_items[0].body << "\n";
 }
 
 void init(void) {

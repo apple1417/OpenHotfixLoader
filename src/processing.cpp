@@ -221,7 +221,7 @@ void init(void) {
 }
 
 void handle_get_verification(void) {
-    std::wcout << L"[OHL] Starting to reload mods\n";
+    LOGI << L"[OHL] Starting to reload mods\n";
     ohl::loader::reload();
 }
 
@@ -271,7 +271,7 @@ void handle_discovery_from_json(FJsonObject** json) {
 
     params->entries.count = new_hotfix_count;
 
-    std::cout << "[OHL] Injected hotfixes\n";
+    LOGI << "[OHL] Injected hotfixes\n";
 
     if (dump_hotfixes) {
         // For some god forsaken reason the default behaviour of **w**ofstream is to output ascii.
@@ -304,7 +304,7 @@ void handle_discovery_from_json(FJsonObject** json) {
             dump.put(0x00);
         }
         dump.close();
-        std::cout << "[OHL] Dumped hotfixes to file\n";
+        LOGI << "[OHL] Dumped hotfixes to file\n";
     }
 }
 
@@ -364,7 +364,7 @@ void handle_news_from_json(ohl::unreal::FJsonObject** json) {
 
     news_data->entries.count = new_news_data_size;
 
-    std::cout << "[OHL] Injected news\n";
+    LOGI << "[OHL] Injected news\n";
 }
 
 bool handle_add_image_to_cache(TSharedPtr<FSparkRequest>* req) {
@@ -376,7 +376,7 @@ bool handle_add_image_to_cache(TSharedPtr<FSparkRequest>* req) {
                         }) == news_items.end();
 
     if (!may_continue) {
-        std::wcout << L"[OHL] Prevented news icon from being cached: " << url << L"\n";
+        LOGI << L"[OHL] Prevented news icon from being cached: " << url << L"\n";
     }
 
     return may_continue;

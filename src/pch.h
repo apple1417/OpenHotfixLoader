@@ -8,6 +8,10 @@
 
 #ifdef __cplusplus
 #include <cpr/cpr.h>
+#include <plog/Appenders/ConsoleAppender.h>
+#include <plog/Formatters/MessageOnlyFormatter.h>
+#include <plog/Initializers/RollingFileInitializer.h>
+#include <plog/Log.h>
 
 #include <array>
 #include <codecvt>
