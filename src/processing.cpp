@@ -281,7 +281,7 @@ void handle_discovery_from_json(FJsonObject** json) {
         // For some god forsaken reason the default behaviour of **w**ofstream is to output ascii.
         // Since encodings are a pain, just write directly in binary.
         // This also means we can actually use this to double check out utf8-utf16 conversion works
-        std::ofstream dump{HOTFIX_DUMP_FILE, std::ios::binary};
+        std::fstream dump(std::filesystem::path(HOTFIX_DUMP_FILE), std::ios::binary);
 
         // Since it should look like utf16, add a BOM
         dump.put(0xFF);

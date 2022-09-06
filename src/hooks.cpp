@@ -315,42 +315,42 @@ void init(void) {
         throw std::runtime_error("MH_Initialize failed " + std::to_string(ret));
     }
 
-    ret = MH_CreateHook(funcs.get_verification, &detour_get_verification,
+    ret = MH_CreateHook((LPVOID) funcs.get_verification, (LPVOID) &detour_get_verification,
                         reinterpret_cast<LPVOID*>(&original_get_verification));
     if (ret != MH_OK) {
         throw std::runtime_error("MH_CreateHook failed " + std::to_string(ret));
     }
-    ret = MH_EnableHook(funcs.get_verification);
+    ret = MH_EnableHook((LPVOID) funcs.get_verification);
     if (ret != MH_OK) {
         throw std::runtime_error("MH_EnableHook failed " + std::to_string(ret));
     }
 
-    ret = MH_CreateHook(funcs.discovery, &detour_discovery_from_json,
+    ret = MH_CreateHook((LPVOID) funcs.discovery, (LPVOID) &detour_discovery_from_json,
                         reinterpret_cast<LPVOID*>(&original_discovery_from_json));
     if (ret != MH_OK) {
         throw std::runtime_error("MH_CreateHook failed " + std::to_string(ret));
     }
-    ret = MH_EnableHook(funcs.discovery);
+    ret = MH_EnableHook((LPVOID) funcs.discovery);
     if (ret != MH_OK) {
         throw std::runtime_error("MH_EnableHook failed " + std::to_string(ret));
     }
 
-    ret = MH_CreateHook(funcs.news, &detour_news_from_json,
+    ret = MH_CreateHook((LPVOID) funcs.news, (LPVOID) &detour_news_from_json,
                         reinterpret_cast<LPVOID*>(&original_news_from_json));
     if (ret != MH_OK) {
         throw std::runtime_error("MH_CreateHook failed " + std::to_string(ret));
     }
-    ret = MH_EnableHook(funcs.news);
+    ret = MH_EnableHook((LPVOID) funcs.news);
     if (ret != MH_OK) {
         throw std::runtime_error("MH_EnableHook failed " + std::to_string(ret));
     }
 
-    ret = MH_CreateHook(funcs.image_cache, &detour_add_image_to_cache,
+    ret = MH_CreateHook( (LPVOID) funcs.image_cache, (LPVOID) &detour_add_image_to_cache,
                         reinterpret_cast<LPVOID*>(&original_add_image_to_cache));
     if (ret != MH_OK) {
         throw std::runtime_error("MH_CreateHook failed " + std::to_string(ret));
     }
-    ret = MH_EnableHook(funcs.image_cache);
+    ret = MH_EnableHook( (LPVOID) funcs.image_cache);
     if (ret != MH_OK) {
         throw std::runtime_error("MH_EnableHook failed " + std::to_string(ret));
     }

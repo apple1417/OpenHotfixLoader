@@ -1,10 +1,10 @@
 #pragma once
 
 #define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
+#include <windows.h>
 
 #include <MinHook.h>
-#include <Shlwapi.h>
+#include <shlwapi.h>
 
 #ifdef __cplusplus
 #include <cpr/cpr.h>
@@ -40,4 +40,9 @@ using std::uint16_t;
 using std::uint32_t;
 using std::uint64_t;
 using std::uint8_t;
+#endif
+
+#ifdef __MINGW32__
+// blank out SetThreadDescription
+#define SetThreadDescription(x,y)
 #endif

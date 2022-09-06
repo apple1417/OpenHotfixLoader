@@ -1,6 +1,6 @@
 1 TYPELIB "versioninfo.rc"
 
-#include <Winver.h>
+#include <winver.h>
 
 #ifdef NDEBUG
     #define DEBUG_FILE_FLAG 0

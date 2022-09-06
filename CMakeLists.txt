@@ -12,14 +12,25 @@ option(BUILD_SHARED_LIBS "" OFF)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/user-includes.cmake")
-   include("${CMAKE_CURRENT_SOURCE_DIR}/user-includes.cmake")
+    include("${CMAKE_CURRENT_SOURCE_DIR}/user-includes.cmake")
 endif()
 
 add_subdirectory(cpr)
 add_subdirectory(minhook)
 add_subdirectory(plog)
 
-find_library(shlwapi Shlwapi.lib REQUIRED)
+if (DEFINED CMAKE_MINGW32)
+    set(CMAKE_CXX_EXTENSIONS False)
+    find_library(shlwapi libshlwapi REQUIRED)
+    set(CMAKE_EXE_COMPILER_FLAGS  "${CMAKE_EXE_COMPILER_FLAGS} -std=c++17 -pthread")
+    set(CMAKE_CXX_FLAGS "-std=c++17 ${CMAKE_CXX_FLAGS}")
+    set(CMAKE_CXX_STANDARD_LIBRARIES "-static-libgcc -static-libstdc++ -lwsock32 -lws2_32 ${CMAKE_CXX_STANDARD_LIBRARIES}")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive -pthread -lshlwapi")
+else()
+    find_library(shlwapi Shlwapi.lib REQUIRED)
+endif()
+
+
 
 configure_file(versioninfo.rc.in versioninfo.rc)
 configure_file(src/version.h.in inc/version.h)
@@ -29,7 +40,12 @@ file(GLOB_RECURSE sources CONFIGURE_DEPENDS "src/*.c" "src/*.cpp" "src/*.h" "src
 add_library(OpenHotfixLoader SHARED ${sources} "${CMAKE_CURRENT_BINARY_DIR}/versioninfo.rc")
 target_include_directories(OpenHotfixLoader PRIVATE "${PROJECT_BINARY_DIR}/inc" "src")
 
-target_link_libraries(OpenHotfixLoader PUBLIC minhook shlwapi cpr::cpr plog)
+if (DEFINED CMAKE_MINGW32)
+   target_link_libraries(OpenHotfixLoader PUBLIC minhook libshlwapi.a cpr::cpr plog)
+else()
+   target_link_libraries(OpenHotfixLoader PUBLIC minhook shlwapi cpr::cpr plog)
+endif()
+
 
 # CMake by default defines NDEBUG in release, we also want the opposite
 target_compile_definitions(OpenHotfixLoader PRIVATE "$<$<CONFIG:DEBUG>:DEBUG>")
