@@ -44,5 +44,5 @@ using std::uint8_t;
 
 #ifdef __MINGW32__
 // blank out SetThreadDescription
-#define SetThreadDescription(x,y)
+#define SetThreadDescription(x, y)
 #endif
