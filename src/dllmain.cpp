@@ -1,5 +1,6 @@
 #include <pch.h>
 
+#include "args.h"
 #include "hooks.h"
 #include "loader.h"
 #include "processing.h"
@@ -21,6 +22,8 @@ static int32_t startup_thread(void*) {
     try {
         SetThreadDescription(GetCurrentThread(), L"OpenHotfixLoader");
 
+        ohl::args::parse();
+
         wchar_t buf[FILENAME_MAX];
         if (GetModuleFileName(NULL, buf, sizeof(buf))) {
             exe_path = std::filesystem::path(std::wstring(buf));
@@ -30,22 +33,22 @@ static int32_t startup_thread(void*) {
         }
 
         static plog::ConsoleAppender<plog::MessageOnlyFormatter> consoleAppender;
-        plog::init(plog::debug, std::filesystem::path(dll_path).replace_filename(LOG_FILE_NAME).c_str())
+        plog::init(ohl::args::debug ? plog::debug : plog::info,
+                   std::filesystem::path(dll_path).replace_filename(LOG_FILE_NAME).c_str())
             .addAppender(&consoleAppender);
 
 #ifdef DEBUG
-        LOGD << "[OHL] Running in debug mode";
+        LOGD << "[OHL] Running debug build";
 #endif
 
         ohl::hooks::init();
-        ohl::processing::init();
         ohl::loader::init();
 
 #ifdef DEBUG
         ohl::loader::reload();
 #endif
     } catch (std::exception ex) {
-        LOGF << "[OHL] Exception occured during initalization: " << ex.what() << "\n";
+        LOGF << "[OHL] Exception occured during initalization: " << ex.what();
     }
 
     return 1;

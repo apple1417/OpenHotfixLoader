@@ -316,15 +316,17 @@ static void load_mod_stream(std::istream& stream,
  */
 static void load_mod_file(const std::filesystem::path& path,
                           std::vector<std::shared_ptr<mod_data>>& file_list) {
+    LOGD << "[OHL] Trying to load " << path;
     // If we've already loaded this file, quit
     if (std::find_if(file_list.begin(), file_list.end(),
                      [&](auto item) { return item->get_full_name() == path; }) != file_list.end()) {
+        LOGD << "[OHL] Already loaded it, ignoring";
         return;
     }
 
     std::ifstream stream{path};
     if (!stream.is_open()) {
-        LOGE << L"[OHL]: Error opening file '" << path << "'\n";
+        LOGE << "[OHL]: Error opening file '" << path;
         return;
     }
 
@@ -342,9 +344,11 @@ static void load_mod_file(const std::filesystem::path& path,
  */
 static void load_mod_url(const std::wstring& url,
                          std::vector<std::shared_ptr<mod_data>>& file_list) {
+    LOGD << "[OHL] Trying to load " << url;
     // If we've already loaded this url, quit
     if (std::find_if(file_list.begin(), file_list.end(),
                      [&](auto item) { return item->get_full_name() == url; }) != file_list.end()) {
+        LOGD << "[OHL] Already loaded it, ignoring";
         return;
     }
 
@@ -355,10 +359,10 @@ static void load_mod_url(const std::wstring& url,
     auto resp = cpr::Get(cpr::Url{narrow_url}, cpr::AcceptEncoding{{""}});
 
     if (resp.status_code == 0) {
-        LOGE << "[OHL] Error downloading '" << narrow_url << "': " << resp.error.message << "\n";
+        LOGE << "[OHL] Error downloading '" << narrow_url << "': " << resp.error.message;
         return;
     } else if (resp.status_code >= 400) {
-        LOGE << "[OHL] Error downloading '" << narrow_url << "': " << resp.status_code << "\n";
+        LOGE << "[OHL] Error downloading '" << narrow_url << "': " << resp.status_code;
         return;
     }
 
@@ -439,9 +443,13 @@ static void reload_impl(void) {
     }
 
     mod_files.clear();
+
+    LOGD << "[OHL] Loading new mod files";
     for (const auto& file : ohl::util::get_sorted_files_in_dir(mod_dir)) {
         load_mod_file(file, mod_files);
     }
+
+    LOGD << "[OHL] Combining mod data";
 
     injected_hotfixes.clear();
     injected_news_items.clear();
@@ -456,6 +464,8 @@ static void reload_impl(void) {
                                 data->type_11_hotfixes.end());
         type_11_maps.insert(data->type_11_maps.begin(), data->type_11_maps.end());
     }
+
+    LOGD << "[OHL] Processing type 11s";
 
     // Add type 11s to the front of the list, and their delays after them but before the rest
     for (const auto& map : type_11_maps) {
@@ -476,9 +486,11 @@ static void reload_impl(void) {
         injected_hotfixes.push_front(*it);
     }
 
+    LOGD << "[OHL] Adding OHL news item";
+
     injected_news_items.push_front(get_ohl_news_item());
 
-    LOGI << L"[OHL] " << injected_news_items[0].body << "\n";
+    LOGI << "[OHL] " << injected_news_items[0].body;
 }
 
 void init(void) {

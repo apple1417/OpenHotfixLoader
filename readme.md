@@ -99,6 +99,10 @@ All content after the `=` is considered part of the url. This syntax is chosen t
 URL shortcut files.
 
 ## Misc Notes
+If you launch the game with the `--debug` command line argument, some more detailed logs will be
+created. This argument is also used by the plugin loader to allocate a console, which will also log
+all messages.
+
 If you ever need to debug the exact hotfixes being applied, launch the game with the
 `--dump-hotfixes` command line argument. This will create a `hotfixes.dump` in win64 every time
 they're loaded.

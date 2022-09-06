@@ -174,9 +174,10 @@ bool detour_get_verification(void* this_api,
                              void* i,
                              void* j) {
     try {
+        LOGD << "[OHL] Hit GetServicesVerification detour";
         ohl::processing::handle_get_verification();
     } catch (std::exception ex) {
-        LOGE << "[OHL] Exception occured in get verification hook: " << ex.what() << "\n";
+        LOGE << "[OHL] Exception occured in get verification hook: " << ex.what();
     }
 
     return original_get_verification(this_api, uuid, consumer, platform, hardware, title, g, h, i,
@@ -193,9 +194,10 @@ bool detour_get_verification(void* this_api,
 static discovery_from_json original_discovery_from_json = nullptr;
 bool detour_discovery_from_json(void* this_service, FJsonObject** json) {
     try {
+        LOGD << "[OHL] Hit Discovery::Services::FromJson detour";
         ohl::processing::handle_discovery_from_json(json);
     } catch (std::exception ex) {
-        LOGE << "[OHL] Exception occured in discovery hook: " << ex.what() << "\n";
+        LOGE << "[OHL] Exception occured in discovery hook: " << ex.what();
     }
 
     return original_discovery_from_json(this_service, json);
@@ -211,28 +213,30 @@ bool detour_discovery_from_json(void* this_service, FJsonObject** json) {
 static news_from_json original_news_from_json = nullptr;
 bool detour_news_from_json(void* this_service, FJsonObject** json) {
     try {
+        LOGD << "[OHL] Hit News::NewsResponse::FromJson detour";
         ohl::processing::handle_news_from_json(json);
     } catch (std::exception ex) {
-        LOGE << "[OHL] Exception occured in news hook: " << ex.what() << "\n";
+        LOGE << "[OHL] Exception occured in news hook: " << ex.what();
     }
 
     return original_news_from_json(this_service, json);
 }
 
 /**
- * @brief Detour function for `GbxSparkSdk::Discovery::Services::FromJson`.
+ * @brief Detour function for `FOnlineImageManager::AddImageToFileCache`.
  *
- * @param this_service The service object this was called on.
- * @param json Unreal json objects containing the received data.
+ * @param this_service The image manager object this was called on.
+ * @param json A pointer to the spark request for this image.
  * @return ¯\_(ツ)_/¯
  */
 static add_image_to_cache original_add_image_to_cache = nullptr;
 void detour_add_image_to_cache(void* this_image_manager, TSharedPtr<FSparkRequest>* req) {
     bool may_continue = true;
     try {
+        LOGD << "[OHL] Hit AddImageToFileCache detour";
         may_continue = ohl::processing::handle_add_image_to_cache(req);
     } catch (std::exception ex) {
-        LOGE << "[OHL] Exception occured in image cache hook: " << ex.what() << "\n";
+        LOGE << "[OHL] Exception occured in image cache hook: " << ex.what();
     }
 
     if (may_continue) {
@@ -273,6 +277,8 @@ void free(void* data) {
 #pragma endregion
 
 void init(void) {
+    LOGD << "[OHL] Initalizing hooks";
+
     auto exe_module = GetModuleHandle(NULL);
 
     MEMORY_BASIC_INFORMATION mem;
@@ -289,6 +295,8 @@ void init(void) {
     auto pe = reinterpret_cast<IMAGE_NT_HEADERS*>(allocation_base + dos->e_lfanew);
     auto module_length = pe->OptionalHeader.SizeOfImage;
 
+    LOGD << "[OHL] Sigscanning";
+
     funcs.malloc = sigscan<fmemory_malloc>(allocation_base, module_length, malloc_pattern);
     funcs.realloc = sigscan<fmemory_realloc>(allocation_base, module_length, realloc_pattern);
     funcs.free = sigscan<fmemory_free>(allocation_base, module_length, free_pattern);
@@ -299,6 +307,8 @@ void init(void) {
     funcs.news = sigscan<news_from_json>(allocation_base, module_length, news_pattern);
     funcs.image_cache =
         sigscan<add_image_to_cache>(allocation_base, module_length, image_cache_pattern);
+
+    LOGD << "[OHL] Injecting detours";
 
     auto ret = MH_Initialize();
     if (ret != MH_OK) {
@@ -345,7 +355,7 @@ void init(void) {
         throw std::runtime_error("MH_EnableHook failed " + std::to_string(ret));
     }
 
-    LOGI << "[OHL] Hooks injected successfully\n";
+    LOGI << "[OHL] Hooks injected successfully";
 }
 
 }  // namespace ohl::hooks

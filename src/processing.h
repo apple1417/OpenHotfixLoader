@@ -5,11 +5,6 @@
 namespace ohl::processing {
 
 /**
- * @brief Initalizes the hook processing module.
- */
-void init(void);
-
-/**
  * @brief Handles `GbxSparkSdk::Discovery::Api::GetServicesVerification` calls, using them to start
  *        reloading hotfixes.
  */

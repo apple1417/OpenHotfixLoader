@@ -64,6 +64,8 @@ static void gather_vf_tables(FJsonObject* discovery_json) {
         return;
     }
 
+    LOGD << "[OHL] Grabbing vftable pointers";
+
     auto services = discovery_json->get<FJsonValueArray>(L"services");
     vf_table.json_value_array = services->vf_table;
     vf_table.shared_ptr_json_value = services->entries.data[0].ref_controller->vf_table;
@@ -216,12 +218,8 @@ static std::wstring get_current_time_str(void) {
     return std::wstring(buf);
 }
 
-void init(void) {
-    dump_hotfixes = std::wstring(GetCommandLine()).find(L"--dump-hotfixes") != std::string::npos;
-}
-
 void handle_get_verification(void) {
-    LOGI << L"[OHL] Starting to reload mods\n";
+    LOGI << "[OHL] Starting to reload mods";
     ohl::loader::reload();
 }
 
@@ -250,6 +248,8 @@ void handle_discovery_from_json(FJsonObject** json) {
 
     auto hotfixes = ohl::loader::get_hotfixes();
 
+    LOGD << "[OHL] Allocating space for hotfixes";
+
     auto params = micropatch->get<FJsonValueArray>(L"parameters");
     auto new_hotfix_count = params->entries.count + hotfixes.size();
     if (new_hotfix_count > params->entries.max) {
@@ -257,6 +257,8 @@ void handle_discovery_from_json(FJsonObject** json) {
         params->entries.data = ohl::hooks::realloc<TSharedPtr<FJsonValue>>(
             params->entries.data, params->entries.max * sizeof(TSharedPtr<FJsonValue>));
     }
+
+    LOGD << "[OHL] Injecting hotfixes";
 
     auto i = params->entries.count;
     for (const auto& [key, hotfix] : hotfixes) {
@@ -271,9 +273,11 @@ void handle_discovery_from_json(FJsonObject** json) {
 
     params->entries.count = new_hotfix_count;
 
-    LOGI << "[OHL] Injected hotfixes\n";
+    LOGI << "[OHL] Injected hotfixes";
 
     if (dump_hotfixes) {
+        LOGD << "[OHL] Dumping hotfixes";
+
         // For some god forsaken reason the default behaviour of **w**ofstream is to output ascii.
         // Since encodings are a pain, just write directly in binary.
         // This also means we can actually use this to double check out utf8-utf16 conversion works
@@ -304,7 +308,7 @@ void handle_discovery_from_json(FJsonObject** json) {
             dump.put(0x00);
         }
         dump.close();
-        LOGI << "[OHL] Dumped hotfixes to file\n";
+        LOGI << "[OHL] Dumped hotfixes to file";
     }
 }
 
@@ -314,6 +318,8 @@ void handle_news_from_json(ohl::unreal::FJsonObject** json) {
     }
 
     auto news_items = ohl::loader::get_news_items();
+
+    LOGD << "[OHL] Allocating space for news items";
 
     auto news_data = (*json)->get<FJsonValueArray>(L"data");
     auto new_news_data_size = news_data->entries.count + news_items.size();
@@ -326,6 +332,8 @@ void handle_news_from_json(ohl::unreal::FJsonObject** json) {
     // Shift the existing entries so that the injected ones appear at the front
     memmove(&news_data->entries.data[news_items.size()], &news_data->entries.data[0],
             news_data->entries.count * sizeof(TSharedPtr<FJsonValue>));
+
+    LOGD << "[OHL] Injecting news items";
 
     auto i = 0;
     for (const auto& news_item : news_items) {
@@ -364,7 +372,7 @@ void handle_news_from_json(ohl::unreal::FJsonObject** json) {
 
     news_data->entries.count = new_news_data_size;
 
-    LOGI << "[OHL] Injected news\n";
+    LOGI << "[OHL] Injected news";
 }
 
 bool handle_add_image_to_cache(TSharedPtr<FSparkRequest>* req) {
@@ -376,7 +384,7 @@ bool handle_add_image_to_cache(TSharedPtr<FSparkRequest>* req) {
                         }) == news_items.end();
 
     if (!may_continue) {
-        LOGI << L"[OHL] Prevented news icon from being cached: " << url << L"\n";
+        LOGI << "[OHL] Prevented news icon from being cached: " << url;
     }
 
     return may_continue;
