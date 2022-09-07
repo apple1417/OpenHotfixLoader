@@ -30,8 +30,6 @@ if (DEFINED MINGW)
     # mingw has different names for shlwapi
     set(LIBSHLWAPI "libshlwapi")
     set(LIBSHLWAPILINK "libshlwapi.a")
-    # Avoid having to include gcc stdlib DLLs, also link pthread statically
-    set(CMAKE_CXX_STANDARD_LIBRARIES "-static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread ${CMAKE_CXX_STANDARD_LIBRARIES}")
 endif()
 
 find_library(shlwapi ${LIBSHLWAPI} REQUIRED)
@@ -45,6 +43,7 @@ file(GLOB_RECURSE sources CONFIGURE_DEPENDS "src/*.c" "src/*.cpp" "src/*.h" "src
 
 add_library(OpenHotfixLoader SHARED ${sources} "${CMAKE_CURRENT_BINARY_DIR}/versioninfo.rc")
 target_include_directories(OpenHotfixLoader PRIVATE "${PROJECT_BINARY_DIR}/inc" "src")
+
 
 target_link_libraries(OpenHotfixLoader PUBLIC minhook ${LIBSHLWAPILINK} cpr::cpr plog)
 
@@ -65,6 +64,11 @@ if(MSVC)
 
     target_compile_options(OpenHotfixLoader PUBLIC "$<$<CONFIG:DEBUG>:/ZI>")
     target_link_options(OpenHotfixLoader PUBLIC "/INCREMENTAL")
+endif()
+
+if (DEFINED MINGW)
+    # staticly link the gcc libgcc and libstdc++ and libpthread into the DLL
+    target_link_libraries(OpenHotfixLoader PRIVATE -static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread)
 endif()
 
 # Postbuild
