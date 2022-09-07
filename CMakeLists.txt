@@ -19,16 +19,22 @@ add_subdirectory(cpr)
 add_subdirectory(minhook)
 add_subdirectory(plog)
 
-if (DEFINED CMAKE_MINGW32)
+# The find_library second argument for Shlwapi
+set(LIBSHLWAPI "Shlwapi.lib")
+# the target_link_library name for Shlwapi
+set(LIBSHLWAPILINK "shlwapi")
+
+if (DEFINED MINGW)
+    # avoid compiling with std=gnu++17
     set(CMAKE_CXX_EXTENSIONS False)
-    find_library(shlwapi libshlwapi REQUIRED)
-    set(CMAKE_EXE_COMPILER_FLAGS  "${CMAKE_EXE_COMPILER_FLAGS} -std=c++17 -pthread")
-    set(CMAKE_CXX_FLAGS "-std=c++17 ${CMAKE_CXX_FLAGS}")
-    set(CMAKE_CXX_STANDARD_LIBRARIES "-static-libgcc -static-libstdc++ -lwsock32 -lws2_32 ${CMAKE_CXX_STANDARD_LIBRARIES}")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive -pthread -lshlwapi")
-else()
-    find_library(shlwapi Shlwapi.lib REQUIRED)
+    # mingw has different names for shlwapi
+    set(LIBSHLWAPI "libshlwapi")
+    set(LIBSHLWAPILINK "libshlwapi.a")
+    # Avoid having to include gcc stdlib DLLs, also link pthread statically
+    set(CMAKE_CXX_STANDARD_LIBRARIES "-static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread ${CMAKE_CXX_STANDARD_LIBRARIES}")
 endif()
+
+find_library(shlwapi ${LIBSHLWAPI} REQUIRED)
 
 
 
@@ -40,11 +46,7 @@ file(GLOB_RECURSE sources CONFIGURE_DEPENDS "src/*.c" "src/*.cpp" "src/*.h" "src
 add_library(OpenHotfixLoader SHARED ${sources} "${CMAKE_CURRENT_BINARY_DIR}/versioninfo.rc")
 target_include_directories(OpenHotfixLoader PRIVATE "${PROJECT_BINARY_DIR}/inc" "src")
 
-if (DEFINED CMAKE_MINGW32)
-   target_link_libraries(OpenHotfixLoader PUBLIC minhook libshlwapi.a cpr::cpr plog)
-else()
-   target_link_libraries(OpenHotfixLoader PUBLIC minhook shlwapi cpr::cpr plog)
-endif()
+target_link_libraries(OpenHotfixLoader PUBLIC minhook ${LIBSHLWAPILINK} cpr::cpr plog)
 
 
 # CMake by default defines NDEBUG in release, we also want the opposite
