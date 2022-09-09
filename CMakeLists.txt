@@ -2,9 +2,12 @@
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_CXX_EXTENSIONS False)
 
 project(OpenHotfixLoader VERSION 1.4)
 set(PROJECT_VERSION_PREFIX "v")
+
+set(CMAKE_SHARED_LIBRARY_PREFIX "")
 set(CMAKE_DEBUG_POSTFIX "-Debug")
 
 # CPR turns this on, so we need to force it back off
@@ -15,27 +18,20 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/user-includes.cmake")
     include("${CMAKE_CURRENT_SOURCE_DIR}/user-includes.cmake")
 endif()
 
+# Libraries
 add_subdirectory(cpr)
 add_subdirectory(minhook)
 add_subdirectory(plog)
 
-# The find_library second argument for Shlwapi
 set(LIBSHLWAPI "Shlwapi.lib")
-# the target_link_library name for Shlwapi
-set(LIBSHLWAPILINK "shlwapi")
-
-if (DEFINED MINGW)
-    # avoid compiling with std=gnu++17
-    set(CMAKE_CXX_EXTENSIONS False)
-    # mingw has different names for shlwapi
+if(MINGW)
+    # Mingw has different names for shlwapi
     set(LIBSHLWAPI "libshlwapi")
-    set(LIBSHLWAPILINK "libshlwapi.a")
 endif()
 
 find_library(shlwapi ${LIBSHLWAPI} REQUIRED)
 
-
-
+# Sources
 configure_file(versioninfo.rc.in versioninfo.rc)
 configure_file(src/version.h.in inc/version.h)
 
@@ -44,9 +40,7 @@ file(GLOB_RECURSE sources CONFIGURE_DEPENDS "src/*.c" "src/*.cpp" "src/*.h" "src
 add_library(OpenHotfixLoader SHARED ${sources} "${CMAKE_CURRENT_BINARY_DIR}/versioninfo.rc")
 target_include_directories(OpenHotfixLoader PRIVATE "${PROJECT_BINARY_DIR}/inc" "src")
 
-
-target_link_libraries(OpenHotfixLoader PUBLIC minhook ${LIBSHLWAPILINK} cpr::cpr plog)
-
+target_link_libraries(OpenHotfixLoader PUBLIC minhook shlwapi cpr::cpr plog)
 
 # CMake by default defines NDEBUG in release, we also want the opposite
 target_compile_definitions(OpenHotfixLoader PRIVATE "$<$<CONFIG:DEBUG>:DEBUG>")
@@ -66,17 +60,21 @@ if(MSVC)
     target_link_options(OpenHotfixLoader PUBLIC "/INCREMENTAL")
 endif()
 
-if (DEFINED MINGW)
-    # staticly link the gcc libgcc and libstdc++ and libpthread into the DLL
-    target_link_libraries(OpenHotfixLoader PRIVATE -static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread)
+if (MINGW)
+    # Want to link statically into a single dll
+    target_link_options(OpenHotfixLoader PUBLIC "-static")
 endif()
 
 # Postbuild
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/postbuild.bat")
+set(POSTBUILD_SCRIPT "postbuild")
+if(CMAKE_HOST_WIN32)
+	set(POSTBUILD_SCRIPT "${POSTBUILD_SCRIPT}.bat")
+endif()
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${POSTBUILD_SCRIPT}")
     add_custom_command(
         TARGET OpenHotfixLoader
         POST_BUILD
-        COMMAND postbuild.bat "\"$<SHELL_PATH:$<TARGET_FILE:OpenHotfixLoader>>\" \"$<IF:$<CONFIG:DEBUG>,DEBUG,RELEASE>\""
+        COMMAND ${POSTBUILD_SCRIPT} "\"$<SHELL_PATH:$<TARGET_FILE:OpenHotfixLoader>>\" \"$<IF:$<CONFIG:DEBUG>,DEBUG,RELEASE>\""
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
 endif()

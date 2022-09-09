@@ -1,7 +1,7 @@
 REM This script is run after a build completes, intended for advanced customization of install dir.
 REM If the script exists, it will be called with the location of the built dll.
 
-REM Example implementation:
+REM Example (batch) implementation:
 
 @echo off
 
