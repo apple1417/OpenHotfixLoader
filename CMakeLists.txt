@@ -2,9 +2,12 @@
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_CXX_EXTENSIONS False)
 
 project(OpenHotfixLoader VERSION 1.4)
 set(PROJECT_VERSION_PREFIX "v")
+
+set(CMAKE_SHARED_LIBRARY_PREFIX "")
 set(CMAKE_DEBUG_POSTFIX "-Debug")
 
 # CPR turns this on, so we need to force it back off
@@ -12,15 +15,23 @@ option(BUILD_SHARED_LIBS "" OFF)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/user-includes.cmake")
-   include("${CMAKE_CURRENT_SOURCE_DIR}/user-includes.cmake")
+    include("${CMAKE_CURRENT_SOURCE_DIR}/user-includes.cmake")
 endif()
 
+# Libraries
 add_subdirectory(cpr)
 add_subdirectory(minhook)
 add_subdirectory(plog)
 
-find_library(shlwapi Shlwapi.lib REQUIRED)
+set(LIBSHLWAPI "Shlwapi.lib")
+if(MINGW)
+    # Mingw has different names for shlwapi
+    set(LIBSHLWAPI "libshlwapi")
+endif()
 
+find_library(shlwapi ${LIBSHLWAPI} REQUIRED)
+
+# Sources
 configure_file(versioninfo.rc.in versioninfo.rc)
 configure_file(src/version.h.in inc/version.h)
 
@@ -49,12 +60,21 @@ if(MSVC)
     target_link_options(OpenHotfixLoader PUBLIC "/INCREMENTAL")
 endif()
 
+if (MINGW)
+    # Want to link statically into a single dll
+    target_link_options(OpenHotfixLoader PUBLIC "-static")
+endif()
+
 # Postbuild
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/postbuild.bat")
+set(POSTBUILD_SCRIPT "postbuild")
+if(CMAKE_HOST_WIN32)
+	set(POSTBUILD_SCRIPT "${POSTBUILD_SCRIPT}.bat")
+endif()
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${POSTBUILD_SCRIPT}")
     add_custom_command(
         TARGET OpenHotfixLoader
         POST_BUILD
-        COMMAND postbuild.bat "\"$<SHELL_PATH:$<TARGET_FILE:OpenHotfixLoader>>\" \"$<IF:$<CONFIG:DEBUG>,DEBUG,RELEASE>\""
+        COMMAND ${POSTBUILD_SCRIPT} "\"$<SHELL_PATH:$<TARGET_FILE:OpenHotfixLoader>>\" \"$<IF:$<CONFIG:DEBUG>,DEBUG,RELEASE>\""
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
 endif()

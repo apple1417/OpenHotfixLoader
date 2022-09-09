@@ -66,7 +66,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID) {
         case DLL_PROCESS_ATTACH:
             this_module = hModule;
             DisableThreadLibraryCalls(hModule);
-            CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)startup_thread, NULL, NULL, NULL);
+            CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)startup_thread, NULL, 0, NULL);
             break;
         case DLL_THREAD_ATTACH:
         case DLL_THREAD_DETACH:

@@ -114,23 +114,26 @@ To get started developing:
 
 1. Clone the repo (including submodules).
    ```
-   git clone --recursive https://github.com/bl-sdk/PythonSDK.git
+   git clone --recursive https://github.com/apple1417/OpenHotfixLoader/
    ```
 
 2. Choose a preset, and run CMake. Most IDEs will have some form of CMake intergration, or you can
    run the commands manually.
    ```
-   cmake . --preset msvc-debug
+   cmake --preset msvc-debug .
+   cmake --build out/build/msvc-debug
    ```
 
-3. (OPTIONAL) Copy `postbuild.bat.template`, and edit it to copy files to your game install
-   directories. Re-run CMake after doing this, existance is only checked during configuration.
+   Cross compilation on Linux is supported through the `mingw-debug` and `mingw-release` presets.
+
+3. (OPTIONAL) Copy `postbuild.template`, and edit it to copy files to your game install directories.
+   Re-run CMake after doing this, existence is only checked during configuration.
 
 4. (OPTIONAL) Copy `user-includes.cmake.template`, and edit it to customize the CMake includes.
    One notable use of this is to make sure libcurl gets properly built with zlib (though the code
    will work without).
 
-   As before, re-run CMake after doing this, as existance is only checked during configuration.
+   As before, re-run CMake after doing this, as existence is only checked during configuration.
 
 5. (OPTIONAL) If you're debugging a game on Steam, add a `steam_appid.txt` in the same folder as the
    executable, containing the game's Steam App Id.
