@@ -146,10 +146,12 @@ class mod_data_url : public mod_data {
  * @param stream The stream to read from.
  * @param default_data A mod data struct with metadata pre-initalized. Will be copied as needed.
  * @param file_list List of mod file data to append to.
+ * @param allow_exec True if to allow running exec commands.
  */
 static void load_mod_stream(std::istream& stream,
                             const mod_data& default_data,
-                            std::vector<std::shared_ptr<mod_data>>& file_list) {
+                            std::vector<std::shared_ptr<mod_data>>& file_list,
+                            bool allow_exec) {
     auto mod_data = default_data.copy_metadata();
     for (std::string narrow_mod_line; std::getline(stream, narrow_mod_line);) {
         std::wstring mod_line = ohl::util::widen(narrow_mod_line);
@@ -257,7 +259,7 @@ static void load_mod_stream(std::istream& stream,
                                             article_url_end_pos == std::string::npos
                                                 ? L""
                                                 : mod_line.substr(article_url_end_pos)});
-        } else if (is_command(EXEC_COMMAND)) {
+        } else if (allow_exec && is_command(EXEC_COMMAND)) {
             auto exec_end_pos = whitespace_end_pos + EXEC_COMMAND.size();
             if (WHITESPACE.find(mod_line[exec_end_pos]) == std::string::npos) {
                 continue;
@@ -333,7 +335,7 @@ static void load_mod_file(const std::filesystem::path& path,
     mod_data_file mod_data{};
     mod_data.path = path;
 
-    load_mod_stream(stream, mod_data, file_list);
+    load_mod_stream(stream, mod_data, file_list, true);
 }
 
 /**
@@ -371,7 +373,7 @@ static void load_mod_url(const std::wstring& url,
     mod_data_url mod_data{};
     mod_data.url = url;
 
-    load_mod_stream(stream, mod_data, file_list);
+    load_mod_stream(stream, mod_data, file_list, false);
 }
 
 /**

@@ -65,8 +65,9 @@ InjectNewsItem,Header,https://url.to/image.png,https://url.to/article,News body,
 
 These commands consist of five comma seperated fields: the command, the header, the image url, the
 article url, and the body. You only have to specify the fields you're using, no need for trailing
-commas if you only have a header. If you want to include a comma in the header or image url, use csv
-escaping - quote it, and use double quotes to insert a literal quote.
+commas if you only have a header. If you want to include a comma in the header or urls, use csv
+escaping - quote it, and use double quotes to insert a literal quote. The body text is always taken
+literally (if it exists), no need to escape it.
 
 ```
 InjectNewsItem,"Header, which contains a comma and a pair of ""quotes""",https://url.to/image.png
@@ -87,6 +88,9 @@ exec "D:\My Mods\testing_mod.txt"
 ```
 
 Paths are taken relative to the `ohl-mods` folder (unless they're absolute to begin with).
+
+Note that, as a security precaution, exec commands *cannot* be run from files downloaded from a url
+(see below). They are simply ignored.
 
 ### URL
 You can download and execute a mod from a url using the `URL=` command. This has all the same
