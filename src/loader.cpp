@@ -138,7 +138,7 @@ class mod_file {
      * @param seen_files A list of files which have already been seen. Any files which have yet to
      *                    be seen will be appended in the order encountered.
      */
-    void append_to(mod_data& data, std::vector<mod_file_identifier>& seen_files) const {
+    void append_to(mod_data& data, std::vector<mod_file_identifier>& seen_files) {
         this->join();
 
         for (const auto& section : this->sections) {
@@ -185,7 +185,7 @@ class mod_file {
     /**
      * @brief Joins any threads started by loading this mod file.
      */
-    virtual void join(void) const {}
+    virtual void join(void) {}
 };
 
 /**
@@ -222,6 +222,9 @@ class mod_file_local : public mod_file {
  * @brief Class for mod file data based on a url.
  */
 class mod_file_url : public mod_file {
+   private:
+    std::future<void> download;
+
    public:
     std::wstring url;
 
@@ -237,25 +240,34 @@ class mod_file_url : public mod_file {
     }
 
     virtual void load(void) {
-        LOGD << "[OHL] Loading " << url;
+        LOGD << "[OHL] Loading " << this->url;
 
-        auto narrow_url = ohl::util::narrow(url);
+        this->download = cpr::GetCallback(
+            [&](const cpr::Response& resp) {
+                LOGD << "[OHL] Finished downloading " << this->url;
 
-        // An empty string tells libcurl to accept whatever encodings it can
-        // TODO: async
-        auto resp = cpr::Get(cpr::Url{narrow_url}, cpr::AcceptEncoding{{""}});
+                if (resp.status_code == 0) {
+                    LOGE << "[OHL] Error downloading '" << this->url << "': " << resp.error.message;
+                    return;
+                } else if (resp.status_code >= 400) {
+                    LOGE << "[OHL] Error downloading '" << this->url << "': " << resp.status_code;
+                    return;
+                }
 
-        if (resp.status_code == 0) {
-            LOGE << "[OHL] Error downloading '" << narrow_url << "': " << resp.error.message;
-            return;
-        } else if (resp.status_code >= 400) {
-            LOGE << "[OHL] Error downloading '" << narrow_url << "': " << resp.status_code;
-            return;
+                std::stringstream stream{resp.text};
+
+                this->load_from_stream(stream, false);
+            },
+            cpr::Url{ohl::util::narrow(this->url)},
+            // An empty string tells libcurl to accept whatever encodings it can
+            cpr::AcceptEncoding{{""}});
+    };
+
+    virtual void join(void) {
+        if (!this->download.valid()) {
+            throw std::runtime_error("Tried to join a url download before starting it!");
         }
-
-        std::stringstream stream{resp.text};
-
-        this->load_from_stream(stream, false);
+        this->download.get();
     }
 };
 
