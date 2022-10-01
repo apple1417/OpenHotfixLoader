@@ -8,12 +8,7 @@ bool dump_hotfixes;
 void parse(void) {
     auto args = std::wstring(GetCommandLine());
 
-#ifdef DEBUG
-    debug = true;
-#else
-    debug = args.find(L"--debug") != std::string::npos;
-#endif
-
+    debug = args.find(L"--ohl-debug") != std::string::npos;
     dump_hotfixes = args.find(L"--dump-hotfixes") != std::string::npos;
 }
 

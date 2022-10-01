@@ -274,7 +274,7 @@ class mods_folder : public mod_file {
     }
 
     virtual void load(void) {
-        LOGD << "[OHL] Loading mods folder";
+        LOGI << "[OHL] Loading mods folder";
 
         for (const auto& path : ohl::util::get_sorted_files_in_dir(mod_dir)) {
             auto file = std::make_shared<mod_file_local>();
@@ -456,18 +456,15 @@ void mod_file::load_from_stream(std::istream& stream, bool allow_exec) {
     }
 }
 
-static std::mutex reloading_mutex;
-static mod_data loaded_mod_data;
-
 /**
  * @brief Creates the news item for OHL, based on the given mod data.
  *
  * @param data The mod data to base the news off of.
- * @param file_order The order files were loaded.
+ * @param file_order The injected mod files, in the order they were loaded.
  * @return The OHL news item.
  */
 static news_item get_ohl_news_item(const mod_data& data,
-                                   std::vector<mod_file_identifier> file_order) {
+                                   std::vector<std::shared_ptr<mod_file>> file_order) {
     auto size = data.hotfixes.size();
 
     // If we're in BL3, colour the name.
@@ -497,23 +494,7 @@ static news_item get_ohl_news_item(const mod_data& data,
         std::wstringstream stream{};
         stream << L"Loaded files:\n";
 
-        for (const auto& identifier : file_order) {
-            auto file = known_mod_files.at(identifier);
-            if (file->sections.size() == 0) {
-                continue;
-            }
-
-            // Special case ignoring a file holding a single remote url reference - i.e. the url
-            //  shortcut files we'll be seeing in 99% of cases
-            if (file->sections.size() == 1 &&
-                std::holds_alternative<remote_mod_data>(file->sections[0])) {
-                auto remote_file =
-                    known_mod_files.at(std::get<remote_mod_data>(file->sections[0]).identifier);
-                if (dynamic_cast<mod_file_url*>(remote_file.get()) != nullptr) {
-                    continue;
-                }
-            }
-
+        for (const auto& file : file_order) {
             stream << file->get_display_name() << L",\n";
         }
 
@@ -522,6 +503,9 @@ static news_item get_ohl_news_item(const mod_data& data,
 
     return {header, OHL_NEWS_ITEM_IMAGE_URL, OHL_NEWS_ITEM_ARTICLE_URL, body};
 }
+
+static std::mutex reloading_mutex;
+static mod_data loaded_mod_data;
 
 /**
  * @brief Implementation of `reload`, which reloads the hotfix list.
@@ -574,14 +558,37 @@ static void reload_impl(void) {
 
     LOGD << "[OHL] Adding OHL news item";
 
-    combined_mod_data.news_items.push_front(get_ohl_news_item(combined_mod_data, seen_files));
+    std::vector<std::shared_ptr<mod_file>> file_order;
+    for (const auto& identifier : seen_files) {
+        auto file = known_mod_files.at(identifier);
+        if (file->sections.size() == 0) {
+            continue;
+        }
+
+        // Special case ignoring a file holding a single remote url reference - i.e. the url
+        //  shortcut files we'll be seeing in 99% of cases
+        if (file->sections.size() == 1 &&
+            std::holds_alternative<remote_mod_data>(file->sections[0])) {
+            auto remote_file =
+                known_mod_files.at(std::get<remote_mod_data>(file->sections[0]).identifier);
+            if (dynamic_cast<mod_file_url*>(remote_file.get()) != nullptr) {
+                continue;
+            }
+        }
+
+        file_order.push_back(file);
+    }
+
+    combined_mod_data.news_items.push_front(get_ohl_news_item(combined_mod_data, file_order));
 
     LOGD << "[OHL] Replacing globals";
 
     loaded_mod_data = combined_mod_data;
 
-    LOGI << "[OHL] Loading finished";
-    LOGI << "[OHL] " << loaded_mod_data.news_items[0].body;
+    LOGI << "[OHL] Loading finished, loaded files:";
+    for (const auto& file : file_order) {
+        LOGI << "[OHL] " << file->get_display_name();
+    }
 }
 
 void init(void) {
