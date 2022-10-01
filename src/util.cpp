@@ -58,4 +58,17 @@ std::vector<std::filesystem::path> get_sorted_files_in_dir(const std::filesystem
     return files;
 }
 
+std::wstring unescape_url(const std::wstring& url, bool extra_info) {
+    wchar_t* unescaped = reinterpret_cast<wchar_t*>(malloc((url.size() + 1) * sizeof(wchar_t)));
+
+    DWORD len = url.size() * 2;
+    UrlUnescapeW(const_cast<wchar_t*>(url.c_str()), unescaped, &len,
+                 URL_UNESCAPE_AS_UTF8 | (extra_info ? 0 : URL_DONT_UNESCAPE_EXTRA_INFO));
+
+    std::wstring ret{unescaped};
+    free(unescaped);
+
+    return ret;
+}
+
 }  // namespace ohl::util

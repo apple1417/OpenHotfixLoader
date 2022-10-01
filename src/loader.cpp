@@ -231,11 +231,14 @@ class mod_file_url : public mod_file {
     virtual mod_file_identifier get_identifier(void) const { return this->url; }
 
     virtual std::wstring get_display_name(void) const {
-        auto last_slash_pos = this->url.find_last_of('/');
-        if (last_slash_pos == std::string::npos) {
+        if (this->url.find_last_of('/') == std::string::npos) {
             return this->url;
         } else {
-            return this->url.substr(last_slash_pos + 1) + L" (url)";
+            auto unescaped = ohl::util::unescape_url(this->url, false);
+            auto name_start_pos = unescaped.find_last_of('/') + 1;
+            auto name_end_pos = unescaped.find_first_of('#?', name_start_pos);
+
+            return unescaped.substr(name_start_pos, name_end_pos - name_start_pos) + L" (url)";
         }
     }
 

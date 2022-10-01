@@ -27,4 +27,13 @@ std::wstring widen(const std::string& str);
  */
 std::vector<std::filesystem::path> get_sorted_files_in_dir(const std::filesystem::path& path);
 
+/**
+ * @brief Unescapes a url.
+ *
+ * @param url The url to unescape.
+ * @param extra_info True if to also unescape the `#` or `?`, and any characters after them.
+ * @return The unescaped url.
+ */
+std::wstring unescape_url(const std::wstring& url, bool extra_info);
+
 }  // namespace ohl::util
