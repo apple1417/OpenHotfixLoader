@@ -1,5 +1,6 @@
 #include <pch.h>
 
+#include "args.h"
 #include "hooks.h"
 #include "loader.h"
 #include "unreal.h"
@@ -9,9 +10,7 @@ using namespace ohl::unreal;
 namespace ohl::processing {
 
 static const auto HOTFIX_COUNTER_OFFSET = 100000;
-static const std::wstring HOTFIX_DUMP_FILE = L"hotfixes.dump";
-
-static bool dump_hotfixes = false;
+static const std::filesystem::path HOTFIX_DUMP_FILE = "hotfixes.dump";
 
 /**
  * @brief Struct holding all the vf tables we need to grab copies of.
@@ -275,13 +274,17 @@ void handle_discovery_from_json(FJsonObject** json) {
 
     LOGI << "[OHL] Injected hotfixes";
 
-    if (dump_hotfixes) {
+    if (ohl::args::dump_hotfixes) {
         LOGD << "[OHL] Dumping hotfixes";
 
         // For some god forsaken reason the default behaviour of **w**ofstream is to output ascii.
         // Since encodings are a pain, just write directly in binary.
-        // This also means we can actually use this to double check out utf8-utf16 conversion works
-        std::fstream dump(std::filesystem::path(HOTFIX_DUMP_FILE), std::ios::binary);
+        // This also means we can actually use this to double check our utf8-utf16 conversion works
+        std::fstream dump(HOTFIX_DUMP_FILE, std::ios::out | std::ios::binary | std::ios::trunc);
+        if (!dump.is_open()) {
+            LOGE << "[OHL] Failed to open dump file!";
+            return;
+        }
 
         // Since it should look like utf16, add a BOM
         dump.put(0xFF);
