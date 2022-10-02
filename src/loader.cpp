@@ -236,7 +236,7 @@ class mod_file_url : public mod_file {
         } else {
             auto unescaped = ohl::util::unescape_url(this->url, false);
             auto name_start_pos = unescaped.find_last_of('/') + 1;
-            auto name_end_pos = unescaped.find_first_of('#?', name_start_pos);
+            auto name_end_pos = unescaped.find_first_of(L"#?", name_start_pos);
 
             return unescaped.substr(name_start_pos, name_end_pos - name_start_pos) + L" (url)";
         }

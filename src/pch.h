@@ -48,4 +48,5 @@ using std::uint8_t;
 #ifdef __MINGW32__
 // blank out SetThreadDescription
 #define SetThreadDescription(x, y)
+#define URL_UNESCAPE_AS_UTF8 0x00040000
 #endif
