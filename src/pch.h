@@ -48,5 +48,8 @@ using std::uint8_t;
 #ifdef __MINGW32__
 // blank out SetThreadDescription
 #define SetThreadDescription(x, y)
+// Missing UTF Escapes for Windows 8 and above
+#ifndef URL_UNESCAPE_AS_UTF8
 #define URL_UNESCAPE_AS_UTF8 0x00040000
+#endif
 #endif
