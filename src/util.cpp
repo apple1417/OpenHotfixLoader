@@ -1,3 +1,4 @@
+#include <doctest/doctest.h>
 #include <pch.h>
 
 namespace ohl::util {
@@ -43,6 +44,45 @@ std::wstring widen(const std::string& str) {
     return ret;
 }
 
+TEST_CASE("util::narrow") {
+    // Test using unicode literals directly to be safe of any encoding issues
+    // UTF16 literals are `char16_t[]`s, which won't implicitly cast to wstring
+    static_assert(sizeof(wchar_t) == sizeof(char16_t));
+
+    CHECK(narrow((wchar_t*)u"test case") == u8"test case");
+    CHECK(narrow((wchar_t*)u"υπόθεση δοκιμής") == u8"υπόθεση δοκιμής");
+    CHECK(narrow((wchar_t*)u"прецедент") == u8"прецедент");
+    CHECK(narrow((wchar_t*)u"テストケース") == u8"テストケース");
+    CHECK(narrow((wchar_t*)u"\u0000\u007F\u0080\u1234") == u8"\u0000\u007F\u0080\u1234");
+}
+
+TEST_CASE("util::widen") {
+    static_assert(sizeof(wchar_t) == sizeof(char16_t));
+
+    CHECK(widen(u8"test case") == (wchar_t*)u"test case");
+    CHECK(widen(u8"υπόθεση δοκιμής") == (wchar_t*)u"υπόθεση δοκιμής");
+    CHECK(widen(u8"прецедент") == (wchar_t*)u"прецедент");
+    CHECK(widen(u8"テストケース") == (wchar_t*)u"テストケース");
+    CHECK(widen(u8"\u0000\u007F\u0080\u1234") == (wchar_t*)u"\u0000\u007F\u0080\u1234");
+}
+
+TEST_CASE("util::narrow - util::widen round trip") {
+    static_assert(sizeof(wchar_t) == sizeof(char16_t));
+
+    CHECK(widen(narrow((wchar_t*)u"test case")) == (wchar_t*)u"test case");
+    CHECK(widen(narrow((wchar_t*)u"υπόθεση δοκιμής")) == (wchar_t*)u"υπόθεση δοκιμής");
+    CHECK(widen(narrow((wchar_t*)u"прецедент")) == (wchar_t*)u"прецедент");
+    CHECK(widen(narrow((wchar_t*)u"テストケース")) == (wchar_t*)u"テストケース");
+    CHECK(widen(narrow((wchar_t*)u"\u0000\u007F\u0080\u1234")) ==
+          (wchar_t*)u"\u0000\u007F\u0080\u1234");
+
+    CHECK(narrow(widen(u8"test case")) == u8"test case");
+    CHECK(narrow(widen(u8"υπόθεση δοκιμής")) == u8"υπόθεση δοκιμής");
+    CHECK(narrow(widen(u8"прецедент")) == u8"прецедент");
+    CHECK(narrow(widen(u8"テストケース")) == u8"テストケース");
+    CHECK(narrow(widen(u8"\u0000\u007F\u0080\u1234")) == u8"\u0000\u007F\u0080\u1234");
+}
+
 std::vector<std::filesystem::path> get_sorted_files_in_dir(const std::filesystem::path& path) {
     std::vector<std::filesystem::path> files{};
     for (const auto& dir_entry : std::filesystem::directory_iterator{path}) {
@@ -69,6 +109,17 @@ std::wstring unescape_url(const std::wstring& url, bool extra_info) {
     free(unescaped);
 
     return ret;
+}
+
+TEST_CASE("util::unescape_url") {
+    CHECK(unescape_url(L"https://example.com", false) == L"https://example.com");
+    CHECK(unescape_url(L"https://example.com#test", false) == L"https://example.com#test");
+    CHECK(unescape_url(L"https://exa%6Dple%2ecom", false) == L"https://example.com");
+    CHECK(unescape_url(L"https://exa%6Dple%2ecom?test", false) == L"https://example.com?test");
+    CHECK(unescape_url(L"https://exa%6Dple%2ecom#test", false) == L"https://example.com#test");
+    CHECK(unescape_url(L"https://exa%6Dple%2ecom#t%65st", false) == L"https://example.com#t%65st");
+    CHECK(unescape_url(L"https://exa%6Dple%2ecom#t%65st", true) == L"https://example.com#test");
+    CHECK(unescape_url(L"https://exa%6Dple%2ecom%23t%65st", true) == L"https://example.com#test");
 }
 
 }  // namespace ohl::util
