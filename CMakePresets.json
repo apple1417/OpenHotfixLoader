@@ -81,5 +81,11 @@
         "_release"
       ]
     }
+  ],
+  "testPresets": [
+    {
+      "name": "msvc-debug",
+      "configurePreset": "msvc-debug"
+    }
   ]
 }
