@@ -41,16 +41,6 @@ configure_file(versioninfo.rc.in versioninfo.rc)
 configure_file(src/version.h.in inc/version.h)
 
 file(GLOB_RECURSE sources CONFIGURE_DEPENDS "src/*.c" "src/*.cpp" "src/*.h" "src/*.hpp")
-file(GLOB_RECURSE test_sources CONFIGURE_DEPENDS "test/*.c" "test/*.cpp" "test/*.h" "test/*.hpp")
-
-# This is a little awkward, but we need to include the test runner in the regular sources
-# We want to use an object library so that we don't need to recompile everything for each target
-# This means we also need an (unused) implementation in the dll, to avoid linker errors - we can't
-#  just disable tests via defines, that'd need a recompile
-# We universally disable tests in release builds, so the final dll won't include it anyway
-set(test_runner "${PROJECT_SOURCE_DIR}/test/runner.cpp")
-list(APPEND sources ${test_runner})
-list(REMOVE_ITEM test_sources ${test_runner})
 
 # Root target
 add_library(ohl_root OBJECT ${sources})
@@ -86,9 +76,9 @@ endif()
 add_library(OpenHotfixLoader SHARED "${CMAKE_CURRENT_BINARY_DIR}/versioninfo.rc")
 target_link_libraries(OpenHotfixLoader PUBLIC ohl_root)
 
-add_executable(ohl_tests ${test_sources})
+add_executable(ohl_tests)
 target_link_libraries(ohl_tests PUBLIC ohl_root)
-doctest_discover_tests(ohl_tests)
+doctest_discover_tests(ohl_tests WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 
 # Postbuild
 set(POSTBUILD_SCRIPT "postbuild")
