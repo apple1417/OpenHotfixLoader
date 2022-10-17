@@ -1,6 +1,6 @@
 #include <pch.h>
 
-#include "dllmain.h"
+#include "args.h"
 #include "loader.h"
 #include "util.h"
 #include "version.h"
@@ -485,7 +485,7 @@ static news_item get_ohl_news_item(const mod_data& data,
     // If we're in BL3, colour the name.
     // WL doesn't support font tags :(
     std::wstring ohl_name;
-    if (exe_path.stem() == "Borderlands3") {
+    if (ohl::args::exe_path().stem() == "Borderlands3") {
         ohl_name =
             L"<font color='#0080E0'>OHL</font><font size='14' color='#C0C0C0'> " VERSION_STRING
             "</font>";
@@ -607,8 +607,9 @@ static void reload_impl(void) {
 }
 
 void init(void) {
+    auto dll_path = ohl::args::dll_path();
     if (std::filesystem::exists(dll_path)) {
-        mod_dir = std::filesystem::path(dll_path).remove_filename() / mod_dir;
+        mod_dir = dll_path.remove_filename() / mod_dir;
     }
 }
 

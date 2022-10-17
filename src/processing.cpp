@@ -274,7 +274,7 @@ void handle_discovery_from_json(FJsonObject** json) {
 
     LOGI << "[OHL] Injected hotfixes";
 
-    if (ohl::args::dump_hotfixes) {
+    if (ohl::args::dump_hotfixes()) {
         LOGD << "[OHL] Dumping hotfixes";
 
         // For some god forsaken reason the default behaviour of **w**ofstream is to output ascii.

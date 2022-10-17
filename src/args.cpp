@@ -5,58 +5,88 @@
 namespace ohl::args {
 TEST_SUITE_BEGIN("args");
 
-bool debug;
-bool dump_hotfixes;
+typedef struct {
+    bool debug;
+    bool dump_hotfixes;
+    std::filesystem::path exe_path;
+    std::filesystem::path dll_path;
+} args_t;
+
+static args_t args = {false, false, "", ""};
 
 /**
- * @brief Implementation of `parse`, allowing passing in a custom string
+ * @brief Implementation of `parse`, allowing passing in a custom string.
  *
- * @param args The command line args
+ * @param cmd The command line args.
  */
-static void parse_str(std::wstring args) {
-    debug = args.find(L"--ohl-debug") != std::string::npos;
-    dump_hotfixes = args.find(L"--dump-hotfixes") != std::string::npos;
+static void parse(std::wstring cmd) {
+    args.debug = cmd.find(L"--ohl-debug") != std::string::npos;
+    args.dump_hotfixes = cmd.find(L"--dump-hotfixes") != std::string::npos;
 }
 
 TEST_CASE("args::parse_str") {
-    debug = false;
-    dump_hotfixes = false;
+    args.debug = false;
+    args.dump_hotfixes = false;
 
     SUBCASE("debug") {
-        parse_str(L"example.exe");
-        REQUIRE(debug == false);
+        parse(L"example.exe");
+        REQUIRE(args.debug == false);
 
-        parse_str(L"example.exe --debug");
-        REQUIRE(debug == false);
+        parse(L"example.exe --debug");
+        REQUIRE(args.debug == false);
 
-        parse_str(L"example.exe --dump-hotfixes");
-        REQUIRE(debug == false);
+        parse(L"example.exe --dump-hotfixes");
+        REQUIRE(args.debug == false);
 
-        parse_str(L"example.exe --ohl-debug");
-        REQUIRE(debug == true);
+        parse(L"example.exe --ohl-debug");
+        REQUIRE(args.debug == true);
     }
 
     SUBCASE("dump") {
-        parse_str(L"example.exe");
-        REQUIRE(dump_hotfixes == false);
+        parse(L"example.exe");
+        REQUIRE(args.dump_hotfixes == false);
 
-        parse_str(L"example.exe --dump-hotfixes");
-        REQUIRE(dump_hotfixes == true);
+        parse(L"example.exe --dump-hotfixes");
+        REQUIRE(args.dump_hotfixes == true);
     }
 
     SUBCASE("debug + dump") {
-        parse_str(L"example.exe");
-        REQUIRE(debug == false);
-        REQUIRE(dump_hotfixes == false);
+        parse(L"example.exe");
+        REQUIRE(args.debug == false);
+        REQUIRE(args.dump_hotfixes == false);
 
-        parse_str(L"example.exe --ohl-debug --dump-hotfixes");
-        REQUIRE(debug == true);
-        REQUIRE(dump_hotfixes == true);
+        parse(L"example.exe --ohl-debug --dump-hotfixes");
+        REQUIRE(args.debug == true);
+        REQUIRE(args.dump_hotfixes == true);
     }
 }
 
-void parse(void) {
-    parse_str(GetCommandLine());
+void init(HMODULE this_module) {
+    parse(GetCommandLine());
+
+    wchar_t buf[FILENAME_MAX];
+    if (GetModuleFileName(NULL, buf, sizeof(buf))) {
+        args.exe_path = std::filesystem::path(std::wstring(buf));
+    }
+    if (GetModuleFileName(this_module, buf, sizeof(buf))) {
+        args.dll_path = std::filesystem::path(std::wstring(buf));
+    }
+}
+
+bool debug(void) {
+    return args.debug;
+}
+
+bool dump_hotfixes(void) {
+    return args.dump_hotfixes;
+}
+
+std::filesystem::path exe_path(void) {
+    return args.exe_path;
+}
+
+std::filesystem::path dll_path(void) {
+    return args.dll_path;
 }
 
 TEST_SUITE_END();

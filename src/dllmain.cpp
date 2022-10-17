@@ -9,9 +9,6 @@ static const std::string LOG_FILE_NAME = "OpenHotfixLoader.log";
 
 static HMODULE this_module;
 
-std::filesystem::path exe_path = "";
-std::filesystem::path dll_path = "";
-
 /**
  * @brief Main startup thread.
  * @note Instance of `ThreadProc`.
@@ -22,19 +19,11 @@ static int32_t startup_thread(void*) {
     try {
         SetThreadDescription(GetCurrentThread(), L"OpenHotfixLoader");
 
-        ohl::args::parse();
-
-        wchar_t buf[FILENAME_MAX];
-        if (GetModuleFileName(NULL, buf, sizeof(buf))) {
-            exe_path = std::filesystem::path(std::wstring(buf));
-        }
-        if (GetModuleFileName(this_module, buf, sizeof(buf))) {
-            dll_path = std::filesystem::path(std::wstring(buf));
-        }
+        ohl::args::init(this_module);
 
         static plog::ConsoleAppender<plog::MessageOnlyFormatter> consoleAppender;
-        plog::init(ohl::args::debug ? plog::debug : plog::info,
-                   std::filesystem::path(dll_path).replace_filename(LOG_FILE_NAME).c_str())
+        plog::init(ohl::args::debug() ? plog::debug : plog::info,
+                   ohl::args::dll_path().replace_filename(LOG_FILE_NAME).c_str())
             .addAppender(&consoleAppender);
 
 #ifdef DEBUG
