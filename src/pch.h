@@ -51,3 +51,12 @@ using std::uint8_t;
 #define SetThreadDescription(x, y)
 #define URL_UNESCAPE_AS_UTF8 0x00040000
 #endif
+
+/**
+ * @brief Shortcut macro which checks if two iterables are equal.
+ * @note Iterables must define `.begin()` and `.end()` functions, returning the relevant iterators.
+ *
+ * @param A The first iterable.
+ * @param B The second iterable.
+ */
+#define ITERABLE_EQUAL(A, B) std::equal((A).begin(), (A).end(), (B).begin(), (B).end())

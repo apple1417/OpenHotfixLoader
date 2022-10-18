@@ -1,5 +1,7 @@
 #include <pch.h>
 
+#include <doctest/doctest.h>
+
 #include "args.h"
 #include "loader.h"
 #include "util.h"
@@ -8,6 +10,7 @@
 using mod_file_identifier = std::wstring;
 
 namespace ohl::loader {
+TEST_SUITE_BEGIN("loader");
 
 class mod_file;
 class mod_manager;
@@ -81,6 +84,83 @@ class mod_data {
                                 this->news_items.end());
     }
 };
+
+TEST_CASE("loader::mod_data::append_to") {
+    const mod_data data_a{{{L"SparkPatchEntry", L"(1,1,0,),/Some/Hotfix/Here"},
+                           {L"SparkPatchEntry", L"(1,1,0,),/Another/Hotfix/"}},
+                          {{L"SparkEarlyLevelPatchEntry", L"(1,11,0,SomeMap_P)"}},
+                          {L"SomeMap_P"},
+                          {{L"header", L"image", L"article", L"body"}}};
+
+    const mod_data data_b{{{L"Key", L"Value"}}, {}, {}, {}};
+
+    const mod_data data_empty{};
+
+    const std::deque<hotfix> expected_a_append_to_b_hotfixes = {
+        {L"Key", L"Value"},
+        {L"SparkPatchEntry", L"(1,1,0,),/Some/Hotfix/Here"},
+        {L"SparkPatchEntry", L"(1,1,0,),/Another/Hotfix/"},
+    };
+
+    const std::deque<hotfix> expected_b_append_to_a_hotfixes = {
+        {L"SparkPatchEntry", L"(1,1,0,),/Some/Hotfix/Here"},
+        {L"SparkPatchEntry", L"(1,1,0,),/Another/Hotfix/"},
+        {L"Key", L"Value"},
+    };
+
+    SUBCASE("against empty") {
+        mod_data data_a_copy = data_a;
+
+        data_empty.append_to(data_a_copy);
+
+        CHECK(ITERABLE_EQUAL(data_a_copy.hotfixes, data_a.hotfixes));
+        CHECK(ITERABLE_EQUAL(data_a_copy.type_11_hotfixes, data_a.type_11_hotfixes));
+        CHECK(ITERABLE_EQUAL(data_a_copy.type_11_maps, data_a.type_11_maps));
+        CHECK(ITERABLE_EQUAL(data_a_copy.news_items, data_a.news_items));
+    }
+
+    SUBCASE("against filled") {
+        mod_data data_a_copy = data_a;
+        mod_data data_b_copy = data_b;
+
+        data_a.append_to(data_b_copy);
+        data_b.append_to(data_a_copy);
+
+        CHECK(ITERABLE_EQUAL(data_a_copy.hotfixes, expected_b_append_to_a_hotfixes));
+
+        CHECK(ITERABLE_EQUAL(data_a_copy.type_11_hotfixes, data_a.type_11_hotfixes));
+        CHECK(ITERABLE_EQUAL(data_a_copy.type_11_maps, data_a.type_11_maps));
+        CHECK(ITERABLE_EQUAL(data_a_copy.news_items, data_a.news_items));
+
+        CHECK(ITERABLE_EQUAL(data_b_copy.hotfixes, expected_a_append_to_b_hotfixes));
+
+        CHECK(ITERABLE_EQUAL(data_b_copy.type_11_hotfixes, data_a.type_11_hotfixes));
+        CHECK(ITERABLE_EQUAL(data_b_copy.type_11_maps, data_a.type_11_maps));
+        CHECK(ITERABLE_EQUAL(data_b_copy.news_items, data_a.news_items));
+    }
+}
+
+TEST_CASE("loader::mod_data::is_empty") {
+    mod_data data{};
+    REQUIRE(data.is_empty() == true);
+
+    mod_data data_hotfix{};
+    data_hotfix.hotfixes.push_back({});
+
+    mod_data data_type_11_hotfix{};
+    data_type_11_hotfix.type_11_hotfixes.push_back({});
+
+    mod_data data_type_11_map{};
+    data_type_11_map.type_11_maps.insert(L"");
+
+    mod_data data_news{};
+    data_news.news_items.push_back({});
+
+    CHECK(data_hotfix.is_empty() == false);
+    CHECK(data_type_11_hotfix.is_empty() == false);
+    CHECK(data_type_11_map.is_empty() == false);
+    CHECK(data_news.is_empty() == false);
+}
 
 /**
  * @brief Class representing mod data coming from another file.
@@ -630,4 +710,5 @@ std::deque<news_item> get_news_items(void) {
     return loaded_mod_data.news_items;
 }
 
+TEST_SUITE_END();
 }  // namespace ohl::loader

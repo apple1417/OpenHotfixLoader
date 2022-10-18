@@ -10,6 +10,11 @@ namespace ohl::loader {
 struct hotfix {
     std::wstring type;
     std::wstring value;
+
+    bool operator==(const hotfix& rhs) const {
+        return this->type == rhs.type && this->value == rhs.value;
+    }
+    bool operator!=(const hotfix& rhs) const { return !operator==(rhs); }
 };
 
 /**
@@ -20,6 +25,12 @@ struct news_item {
     std::wstring image_url;
     std::wstring article_url;
     std::wstring body;
+
+    bool operator==(const news_item& rhs) const {
+        return this->header == rhs.header && this->image_url == rhs.image_url &&
+               this->article_url == rhs.article_url && this->body == rhs.body;
+    }
+    bool operator!=(const news_item& rhs) const { return !operator==(rhs); }
 };
 
 /**
