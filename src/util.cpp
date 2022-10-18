@@ -109,7 +109,7 @@ std::vector<std::filesystem::path> get_sorted_files_in_dir(const std::filesystem
 }
 
 TEST_CASE("utils::get_sorted_files_in_dir") {
-    const std::filesystem::path dir = "tests/utils_sorted_files";
+    const std::filesystem::path dir = std::filesystem::path("tests") / "utils_sorted_files";
     const std::vector<std::filesystem::path> expected = {
         dir / "1.txt", dir / "5.txt", dir / "10.txt", dir / "a.txt", dir / "b.txt", dir / "c.txt",
     };
