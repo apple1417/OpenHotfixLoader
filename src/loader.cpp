@@ -167,7 +167,9 @@ TEST_CASE("loader::mod_data::is_empty") {
  */
 class remote_mod_data {
    public:
-    mod_file_identifier identifier;
+    const mod_file_identifier identifier;
+
+    remote_mod_data(const mod_file_identifier& identifier) : identifier(identifier) {}
 };
 
 /**
@@ -186,10 +188,7 @@ class mod_file {
      */
     void register_remote_file(const std::shared_ptr<mod_file> file) {
         auto identifier = file->get_identifier();
-
-        remote_mod_data remote;
-        remote.identifier = identifier;
-        this->sections.push_back(remote);
+        this->sections.push_back(remote_mod_data{identifier});
 
         bool is_known = true;
 
@@ -273,7 +272,9 @@ class mod_file {
  */
 class mod_file_local : public mod_file {
    public:
-    std::filesystem::path path;
+    const std::filesystem::path path;
+
+    mod_file_local(const std::filesystem::path& path) : path(path) {}
 
     virtual mod_file_identifier get_identifier(void) const { return this->path.wstring(); }
 
@@ -306,7 +307,9 @@ class mod_file_url : public mod_file {
     std::future<void> download;
 
    public:
-    std::wstring url;
+    const std::wstring url;
+
+    mod_file_url(const std::wstring& url) : url(url) {}
 
     virtual mod_file_identifier get_identifier(void) const { return this->url; }
 
@@ -372,9 +375,7 @@ class mods_folder : public mod_file {
         LOGI << "[OHL] Loading mods folder";
 
         for (const auto& path : ohl::util::get_sorted_files_in_dir(mod_dir)) {
-            auto file = std::make_shared<mod_file_local>();
-            file->path = path;
-            this->register_remote_file(file);
+            this->register_remote_file(std::make_shared<mod_file_local>(path));
         }
     }
 };
@@ -527,9 +528,7 @@ void mod_file::load_from_stream(std::istream& stream, bool allow_exec) {
                 data = new_data;
             }
 
-            auto new_file = std::make_shared<mod_file_local>();
-            new_file->path = path;
-            this->register_remote_file(new_file);
+            this->register_remote_file(std::make_shared<mod_file_local>(path));
         } else if (is_command(URL_COMMAND)) {
             auto url = mod_line.substr(whitespace_end_pos + URL_COMMAND.size());
 
@@ -540,9 +539,7 @@ void mod_file::load_from_stream(std::istream& stream, bool allow_exec) {
                 data = new_data;
             }
 
-            auto new_file = std::make_shared<mod_file_url>();
-            new_file->url = url;
-            this->register_remote_file(new_file);
+            this->register_remote_file(std::make_shared<mod_file_url>(url));
         }
     }
 
