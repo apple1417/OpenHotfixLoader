@@ -289,20 +289,23 @@ class mod_file_local : public mod_file {
         auto original_mod_dir = mod_dir;
         mod_dir = "tests";
 
-        CHECK(mod_file_local{mod_dir / "mod_file.bl3hotfix"}.get_display_name() ==
-              L"mod_file.bl3hotfix");
+        // Use an empty subcase to make sure we restore the mod dir if this fails
+        SUBCASE("") {
+            CHECK(mod_file_local{mod_dir / "mod_file.bl3hotfix"}.get_display_name() ==
+                  L"mod_file.bl3hotfix");
 
-        CHECK(mod_file_local{mod_dir / "nested_folder" / "mod_in_nested.txt"}.get_display_name() ==
-              L"tests\\nested_folder\\mod_in_nested.txt");
+            CHECK(mod_file_local{mod_dir / "nested_folder" / "mod_in_nested.txt"}
+                      .get_display_name() == L"tests\\nested_folder\\mod_in_nested.txt");
 
-        CHECK(mod_file_local{mod_dir / "mod_without_extension"}.get_display_name() ==
-              L"mod_without_extension");
+            CHECK(mod_file_local{mod_dir / "mod_without_extension"}.get_display_name() ==
+                  L"mod_without_extension");
 
-        CHECK(mod_file_local{mod_dir / "mod.with.multiple.dots.txt"}.get_display_name() ==
-              L"mod.with.multiple.dots.txt");
+            CHECK(mod_file_local{mod_dir / "mod.with.multiple.dots.txt"}.get_display_name() ==
+                  L"mod.with.multiple.dots.txt");
 
-        CHECK(mod_file_local{mod_dir / ".mod- !#with ()'symbols;'+ .txt"}.get_display_name() ==
-              L".mod- !#with ()'symbols;'+ .txt");
+            CHECK(mod_file_local{mod_dir / ".mod- !#with ()'symbols;'+ .txt"}.get_display_name() ==
+                  L".mod- !#with ()'symbols;'+ .txt");
+        }
 
         mod_dir = original_mod_dir;
     }
@@ -432,7 +435,7 @@ TEST_CASE("loader::mod_file::append_to") {
     std::vector<mod_file_identifier> seen_files{};
 
     file.append_to(empty_data, seen_files);
-    CHECK(seen_files.empty()); // Only adds nested files
+    CHECK(seen_files.empty());  // Only adds nested files
 
     file.append_to(filled_data, seen_files);
     CHECK(seen_files.empty());
@@ -515,6 +518,50 @@ class mod_file_url : public mod_file {
             cpr::AcceptEncoding{{""}});
     };
 
+    TEST_CASE_CLASS("loader::mod_file_url::load - load_from_stream identical") {
+        mod_file_url url_file{
+            L"https://raw.githubusercontent.com/apple1417/OpenHotfixLoader/master/tests/"
+            L"loader_load_from_stream/basic_mod.bl3hotfix"};
+        mod_file_url stream_file{L"dummy"};
+
+        std::stringstream stream{};
+        stream << "SparkLevelPatchEntry,(1,1,1,Crypt_P),/Game/Cinematics/_Design/NPCs/"
+                  "BPCine_Actor_Typhon.BPCine_Actor_Typhon_C:SkeletalMesh_GEN_VARIABLE,"
+                  "bEnableUpdateRateOptimizations,4,True,False\n";
+
+        const hotfix expected_hotfix{
+            L"SparkLevelPatchEntry",
+            L"(1,1,1,Crypt_P),/Game/Cinematics/_Design/NPCs/"
+            "BPCine_Actor_Typhon.BPCine_Actor_Typhon_C:SkeletalMesh_GEN_VARIABLE,"
+            "bEnableUpdateRateOptimizations,4,True,False"};
+
+        url_file.load();
+        url_file.join();
+        stream_file.load_from_stream(stream, true);
+
+        REQUIRE(url_file.sections.size() == 1);
+        REQUIRE(std::holds_alternative<mod_data>(url_file.sections[0]));
+        auto url_data = std::get<mod_data>(url_file.sections[0]);
+
+        REQUIRE(stream_file.sections.size() == 1);
+        REQUIRE(std::holds_alternative<mod_data>(stream_file.sections[0]));
+        auto stream_data = std::get<mod_data>(stream_file.sections[0]);
+
+        REQUIRE(url_data.hotfixes.size() == 1);
+        CHECK(url_data.type_11_hotfixes.empty());
+        CHECK(url_data.type_11_maps.empty());
+        CHECK(url_data.news_items.empty());
+
+        REQUIRE(stream_data.hotfixes.size() == 1);
+        CHECK(stream_data.type_11_hotfixes.empty());
+        CHECK(stream_data.type_11_maps.empty());
+        CHECK(stream_data.news_items.empty());
+
+        CHECK(url_data.hotfixes[0] == stream_data.hotfixes[0]);
+        CHECK(url_data.hotfixes[0] == expected_hotfix);
+        CHECK(stream_data.hotfixes[0] == expected_hotfix);
+    }
+
     virtual void join(void) {
         if (!this->download.valid()) {
             throw std::runtime_error("Tried to join a url download before starting it!");
@@ -543,6 +590,34 @@ class mods_folder : public mod_file {
         for (const auto& path : ohl::util::get_sorted_files_in_dir(mod_dir)) {
             this->register_remote_file(std::make_shared<mod_file_local>(path));
         }
+    }
+
+    TEST_CASE_CLASS("loader::mods_folder::load") {
+        auto original_mod_dir = mod_dir;
+        mod_dir = std::filesystem::path("tests") / "utils_sorted_files";
+
+        const std::vector<mod_file_identifier> expected_identifiers = {
+            L"tests\\utils_sorted_files\\1.txt",  L"tests\\utils_sorted_files\\5.txt",
+            L"tests\\utils_sorted_files\\10.txt", L"tests\\utils_sorted_files\\a.txt",
+            L"tests\\utils_sorted_files\\b.txt",  L"tests\\utils_sorted_files\\c.txt",
+        };
+
+        SUBCASE("") {
+            mods_folder folder;
+            folder.load();
+            folder.join();
+
+            std::vector<mod_file_identifier> found_identifiers{};
+            std::transform(folder.sections.begin(), folder.sections.end(),
+                           std::back_inserter(found_identifiers), [](const auto& section) {
+                               REQUIRE(std::holds_alternative<remote_mod_data>(section));
+                               return std::get<remote_mod_data>(section).identifier;
+                           });
+
+            CHECK(ITERABLE_EQUAL(found_identifiers, expected_identifiers));
+        }
+
+        mod_dir = original_mod_dir;
     }
 };
 
