@@ -79,8 +79,8 @@ TEST_CASE("utils::narrow - utils::widen round trip") {
     CHECK(widen(narrow((wchar_t*)u"υπόθεση δοκιμής")) == (wchar_t*)u"υπόθεση δοκιμής");
     CHECK(widen(narrow((wchar_t*)u"прецедент")) == (wchar_t*)u"прецедент");
     CHECK(widen(narrow((wchar_t*)u"テストケース")) == (wchar_t*)u"テストケース");
-    CHECK(widen(narrow((wchar_t*)u"\u0000\u007F\u0080\u1234")) ==
-          (wchar_t*)u"\u0000\u007F\u0080\u1234");
+    CHECK(widen(narrow((wchar_t*)u"\u0000\u007F\u0080\u1234"))
+          == (wchar_t*)u"\u0000\u007F\u0080\u1234");
 
     CHECK(widen(narrow((wchar_t*)u"test case")) != (wchar_t*)u"other string");
 

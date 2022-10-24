@@ -71,8 +71,8 @@ class mod_data {
      * @return True if empty, false otherwise.
      */
     bool is_empty(void) const {
-        return this->hotfixes.size() == 0 && this->type_11_hotfixes.size() == 0 &&
-               this->type_11_maps.size() == 0 && this->news_items.size() == 0;
+        return this->hotfixes.size() == 0 && this->type_11_hotfixes.size() == 0
+               && this->type_11_maps.size() == 0 && this->news_items.size() == 0;
     }
 
     /**
@@ -244,8 +244,8 @@ class mod_file {
                 auto file = known_mod_files.at(std::get<remote_mod_data>(section).identifier);
 
                 auto identifier = file->get_identifier();
-                if (std::find(seen_files.begin(), seen_files.end(), identifier) !=
-                    seen_files.end()) {
+                if (std::find(seen_files.begin(), seen_files.end(), identifier)
+                    != seen_files.end()) {
                     LOGD << "[OHL] Already seen " << identifier;
                     continue;
                 } else {
@@ -309,20 +309,20 @@ class mod_file_local : public mod_file {
 
         // Use an empty subcase to make sure we restore the mod dir if this fails
         SUBCASE("") {
-            CHECK(mod_file_local{mod_dir / "mod_file.bl3hotfix"}.get_display_name() ==
-                  L"mod_file.bl3hotfix");
+            CHECK(mod_file_local{mod_dir / "mod_file.bl3hotfix"}.get_display_name()
+                  == L"mod_file.bl3hotfix");
 
-            CHECK(mod_file_local{mod_dir / "nested_folder" / "mod_in_nested.txt"}
-                      .get_display_name() == L"tests\\nested_folder\\mod_in_nested.txt");
+            CHECK(mod_file_local{mod_dir / "nested_folder" / "mod_in_nested.txt"}.get_display_name()
+                  == L"tests\\nested_folder\\mod_in_nested.txt");
 
-            CHECK(mod_file_local{mod_dir / "mod_without_extension"}.get_display_name() ==
-                  L"mod_without_extension");
+            CHECK(mod_file_local{mod_dir / "mod_without_extension"}.get_display_name()
+                  == L"mod_without_extension");
 
-            CHECK(mod_file_local{mod_dir / "mod.with.multiple.dots.txt"}.get_display_name() ==
-                  L"mod.with.multiple.dots.txt");
+            CHECK(mod_file_local{mod_dir / "mod.with.multiple.dots.txt"}.get_display_name()
+                  == L"mod.with.multiple.dots.txt");
 
-            CHECK(mod_file_local{mod_dir / ".mod- !#with ()'symbols;'+ .txt"}.get_display_name() ==
-                  L".mod- !#with ()'symbols;'+ .txt");
+            CHECK(mod_file_local{mod_dir / ".mod- !#with ()'symbols;'+ .txt"}.get_display_name()
+                  == L".mod- !#with ()'symbols;'+ .txt");
         }
 
         mod_dir = original_mod_dir;
@@ -496,20 +496,20 @@ class mod_file_url : public mod_file {
     }
 
     TEST_CASE_CLASS("loader::mod_file_url::get_display_name") {
-        CHECK(mod_file_url{L"https://example.com/mod.bl3hotfix"}.get_display_name() ==
-              L"mod.bl3hotfix (url)");
+        CHECK(mod_file_url{L"https://example.com/mod.bl3hotfix"}.get_display_name()
+              == L"mod.bl3hotfix (url)");
 
-        CHECK(mod_file_url{L"https://example.com/nested/nested/mod.bl3hotfix"}.get_display_name() ==
-              L"mod.bl3hotfix (url)");
+        CHECK(mod_file_url{L"https://example.com/nested/nested/mod.bl3hotfix"}.get_display_name()
+              == L"mod.bl3hotfix (url)");
 
-        CHECK(mod_file_url{L"https://exa%6Dple.com/%6Dy%20mod.bl3hotfix"}.get_display_name() ==
-              L"my mod.bl3hotfix (url)");
+        CHECK(mod_file_url{L"https://exa%6Dple.com/%6Dy%20mod.bl3hotfix"}.get_display_name()
+              == L"my mod.bl3hotfix (url)");
 
-        CHECK(mod_file_url{L"https://example.com/mod.bl3hotfix?query=abc"}.get_display_name() ==
-              L"mod.bl3hotfix (url)");
+        CHECK(mod_file_url{L"https://example.com/mod.bl3hotfix?query=abc"}.get_display_name()
+              == L"mod.bl3hotfix (url)");
 
-        CHECK(mod_file_url{L"https://example.com/mod.bl3hotfix#anchor"}.get_display_name() ==
-              L"mod.bl3hotfix (url)");
+        CHECK(mod_file_url{L"https://example.com/mod.bl3hotfix#anchor"}.get_display_name()
+              == L"mod.bl3hotfix (url)");
     }
 
     virtual void load(void) {
@@ -758,10 +758,10 @@ static std::optional<std::wstring> parse_url_cmd(const std::wstring_view& line) 
 }
 
 TEST_CASE("loader::parse_url_cmd") {
-    CHECK(parse_url_cmd(L"url=https://example.com/mod.bl3hotfix") ==
-          L"https://example.com/mod.bl3hotfix");
-    CHECK(parse_url_cmd(L"url=  \"https://example.com/mod.bl3hotfix\"") ==
-          L"  \"https://example.com/mod.bl3hotfix\"");
+    CHECK(parse_url_cmd(L"url=https://example.com/mod.bl3hotfix")
+          == L"https://example.com/mod.bl3hotfix");
+    CHECK(parse_url_cmd(L"url=  \"https://example.com/mod.bl3hotfix\"")
+          == L"  \"https://example.com/mod.bl3hotfix\"");
     CHECK(parse_url_cmd(L"URL=1234") == L"1234");
 }
 
@@ -958,8 +958,8 @@ static void reload_impl(void) {
 
         // Special case ignoring a file holding a single remote url reference - i.e. the url
         //  shortcut files we'll be seeing in 99% of cases
-        if (file->sections.size() == 1 &&
-            std::holds_alternative<remote_mod_data>(file->sections[0])) {
+        if (file->sections.size() == 1
+            && std::holds_alternative<remote_mod_data>(file->sections[0])) {
             auto remote_file =
                 known_mod_files.at(std::get<remote_mod_data>(file->sections[0]).identifier);
             if (dynamic_cast<mod_file_url*>(remote_file.get()) != nullptr) {

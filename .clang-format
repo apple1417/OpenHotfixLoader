@@ -1,8 +1,10 @@
 ---
-Language:        Cpp
-BasedOnStyle:    Chromium
-ColumnLimit:     100
-SortIncludes:    CaseInsensitive
-IndentWidth:     4
-InsertBraces:    true
+Language:                       Cpp
+BasedOnStyle:                   Chromium
+
+BreakBeforeBinaryOperators:     NonAssignment
+ColumnLimit:                    100
+IndentWidth:                    4
+InsertBraces:                   true
+SortIncludes:                   CaseInsensitive
 ---

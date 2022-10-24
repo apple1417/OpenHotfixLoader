@@ -33,8 +33,8 @@ struct JTypeMapping<FJsonValueObject> {
 template <typename T>
 T* FJsonValue::cast(void) {
     if (this->type != JTypeMapping<T>::enum_type) {
-        throw std::runtime_error("JSON object was of unexpected type " +
-                                 std::to_string((uint32_t)this->type));
+        throw std::runtime_error("JSON object was of unexpected type "
+                                 + std::to_string((uint32_t)this->type));
     }
     return reinterpret_cast<T*>(this);
 }

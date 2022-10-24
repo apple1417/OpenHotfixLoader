@@ -382,9 +382,9 @@ bool handle_add_image_to_cache(TSharedPtr<FSparkRequest>* req) {
     auto url = req->obj->get_url();
 
     auto news_items = ohl::loader::get_news_items();
-    auto may_continue = std::find_if(news_items.begin(), news_items.end(), [&](auto item) {
-                            return item.image_url == url;
-                        }) == news_items.end();
+    auto may_continue = std::find_if(news_items.begin(), news_items.end(),
+                                     [&](auto item) { return item.image_url == url; })
+                        == news_items.end();
 
     if (!may_continue) {
         LOGI << "[OHL] Prevented news icon from being cached: " << url;

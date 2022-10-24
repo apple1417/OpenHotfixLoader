@@ -27,8 +27,8 @@ struct news_item {
     std::wstring body;
 
     bool operator==(const news_item& rhs) const {
-        return this->header == rhs.header && this->image_url == rhs.image_url &&
-               this->article_url == rhs.article_url && this->body == rhs.body;
+        return this->header == rhs.header && this->image_url == rhs.image_url
+               && this->article_url == rhs.article_url && this->body == rhs.body;
     }
     bool operator!=(const news_item& rhs) const { return !operator==(rhs); }
 };
