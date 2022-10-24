@@ -643,24 +643,80 @@ class mods_folder : public mod_file {
 
 #pragma region Parsing
 
-static std::optional<hotfix> parse_hotfix_cmd(const std::wstring_view& line) {
+/**
+ * @brief Parses a hotfix command, and appends it to the given mod data.
+ *
+ * @param line The line to parse, without leading whitespace.
+ * @param data The mod data object to append hotfixes to.
+ */
+static void parse_and_append_hotfix_cmd(const std::wstring_view& line, mod_data& data) {
     auto key_end_pos = line.find_first_of(',');
     if (key_end_pos == std::wstring::npos) {
-        return std::nullopt;
+        return;
     }
 
-    return {{std::wstring(line, 0, key_end_pos),
-             std::wstring(line, key_end_pos + 1, line.size() - (key_end_pos + 1))}};
+    // SparkEarlyLevelPatchEntry,(1,11,0,MAPNAME),...
+    //                          ^   ^ ^  ^      ^
+    // key_end_pos -------------+   | |  |      |
+    // type_start_pos --------------+ |  |      |
+    // type_end_pos ------------------+  |      |
+    // map_start_pos --------------------+      |
+    // map_end_pos -----------------------------+
+
+    hotfix hf{std::wstring(line, 0, key_end_pos),
+              std::wstring(line, key_end_pos + 1, std::string::npos)};
+
+    // Check if it's a type 11, and extract the map
+    auto type_start_pos = line.find_first_of(',', key_end_pos + 1) + 1;
+    auto type_end_pos = line.find_first_of(',', type_start_pos + 1);
+    if (type_end_pos != std::string::npos
+        && line.substr(type_start_pos, type_end_pos - type_start_pos) == L"11") {
+        auto map_start_pos = line.find_first_of(',', type_end_pos + 1) + 1;
+        auto map_end_pos = line.find_first_of(')', map_start_pos);
+        if (map_end_pos != std::string::npos) {
+            std::wstring map(line, map_start_pos, map_end_pos - map_start_pos);
+            data.type_11_hotfixes.push_back(hf);
+            data.type_11_maps.insert(map);
+            return;
+        }
+    }
+
+    data.hotfixes.push_back(hf);
 }
 
-static std::optional<std::wstring> parse_type_11_map(const std::wstring_view& line) {
-    auto map_start_pos = TYPE_11_PREFIX.size();
-    auto map_end_pos = line.find_first_of(')', map_start_pos);
-    if (map_end_pos == std::string::npos) {
-        return std::nullopt;
-    }
+TEST_CASE("loader::parse_and_append_hotfix_cmd") {
+    mod_data data;
 
-    return std::wstring(line, map_start_pos, map_end_pos - map_start_pos);
+    parse_and_append_hotfix_cmd(L"Spark", data);
+    parse_and_append_hotfix_cmd(L"SparkLevelPatchEntry", data);
+    REQUIRE(data.is_empty());
+
+    parse_and_append_hotfix_cmd(L"Spark,", data);
+    REQUIRE(data.hotfixes.size() == 1);
+    REQUIRE(data.hotfixes[0] == hotfix{L"Spark", L""});
+
+    parse_and_append_hotfix_cmd(L"Spark,abcde", data);
+    REQUIRE(data.hotfixes.size() == 2);
+    REQUIRE(data.hotfixes[1] == hotfix{L"Spark", L"abcde"});
+
+    parse_and_append_hotfix_cmd(L"Spark,(1,111,1,NotA),Type11", data);
+    REQUIRE(data.hotfixes.size() == 3);
+    REQUIRE(data.hotfixes[2] == hotfix{L"Spark", L"(1,111,1,NotA),Type11"});
+
+    REQUIRE(data.type_11_hotfixes.empty());
+    REQUIRE(data.type_11_maps.empty());
+
+    parse_and_append_hotfix_cmd(L"SparkLevelPatchEntry,(1,11,0,MapName),/Is/Actually.A,Type,11",
+                                data);
+    REQUIRE(data.hotfixes.size() == 3);
+    REQUIRE(data.type_11_hotfixes.size() == 1);
+    REQUIRE(data.type_11_hotfixes[0]
+            == hotfix{L"SparkLevelPatchEntry", L"(1,11,0,MapName),/Is/Actually.A,Type,11"});
+
+    REQUIRE(data.type_11_maps.size() == 1);
+    REQUIRE(data.type_11_maps.count(L"MapName") == 1);
+
+    REQUIRE(data.news_items.size() == 0);
 }
 
 static std::optional<news_item> parse_news_item_cmd(const std::wstring_view& line) {
@@ -800,20 +856,7 @@ void mod_file::load_from_stream(std::istream& stream, bool allow_exec) {
         };
 
         if (is_command(HOTFIX_COMMAND)) {
-            auto hotfix = parse_hotfix_cmd(mod_line);
-
-            if (hotfix) {
-                if (is_command(TYPE_11_PREFIX)) {
-                    auto map = parse_type_11_map(mod_line);
-                    if (map) {
-                        data.type_11_hotfixes.push_back(*hotfix);
-                        data.type_11_maps.insert(*map);
-                        continue;
-                    }
-                }
-
-                data.hotfixes.push_back(*hotfix);
-            }
+            parse_and_append_hotfix_cmd(mod_line, data);
         } else if (is_command(NEWS_COMMAND)) {
             auto news_item = parse_news_item_cmd(mod_line);
 
