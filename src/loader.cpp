@@ -12,6 +12,8 @@ using mod_file_identifier = std::wstring;
 namespace ohl::loader {
 TEST_SUITE_BEGIN("loader");
 
+#pragma region Consts
+
 class mod_file;
 
 static const std::wstring WHITESPACE = L" \f\n\r\t\b";
@@ -43,11 +45,15 @@ static const std::wstring OHL_NEWS_ITEM_IMAGE_URL =
 static const std::wstring OHL_NEWS_ITEM_ARTICLE_URL =
     L"https://github.com/apple1417/OpenHotfixLoader/releases";
 
+#pragma endregion
+
 // This default works relative to the cwd, we'll try replace it later.
 static std::filesystem::path mod_dir = "ohl-mods";
 
 static std::mutex known_mod_files_mutex;
 static std::unordered_map<mod_file_identifier, std::shared_ptr<mod_file>> known_mod_files{};
+
+#pragma region Types
 
 /**
  * @brief Class holding all the data that can be extracted from a region of a mod file.
@@ -179,6 +185,17 @@ class mod_file {
     void load_from_stream(std::istream& stream, bool allow_exec);
 
     /**
+     * @brief Adds a mod data object to this file's sections.
+     *
+     * @param data The mod data to add.
+     */
+    void push_mod_data(const mod_data& data) {
+        if (!data.is_empty()) {
+            this->sections.push_back(data);
+        }
+    }
+
+    /**
      * @brief Adds a remote to this file's sections, as well as to the global list of known files.
      * @note If the file was not previously known, starts loading it.
      * @note Edits the global list atomically.
@@ -207,6 +224,7 @@ class mod_file {
 
    public:
     std::vector<std::variant<mod_data, remote_mod_data>> sections;
+
     /**
      * @brief Appends all the mod data from this file to the end of a mod data object.
      * @note Recursively looks up remote files.
@@ -214,7 +232,7 @@ class mod_file {
      *
      * @param data The mod data object to append to.
      * @param seen_files A list of files which have already been seen. Any nested files which have
-     *                    yet to be seen will be appended in the order encountered.
+     *                   yet to be seen will be appended in the order encountered.
      */
     void append_to(mod_data& data, std::vector<mod_file_identifier>& seen_files) {
         this->join();
@@ -621,6 +639,132 @@ class mods_folder : public mod_file {
     }
 };
 
+#pragma endregion
+
+#pragma region Parsing
+
+static std::optional<hotfix> parse_hotfix_cmd(const std::wstring_view& line) {
+    auto key_end_pos = line.find_first_of(',');
+    if (key_end_pos == std::wstring::npos) {
+        return std::nullopt;
+    }
+
+    return {{std::wstring(line, 0, key_end_pos),
+             std::wstring(line, key_end_pos + 1, line.size() - (key_end_pos + 1))}};
+}
+
+static std::optional<std::wstring> parse_type_11_map(const std::wstring_view& line) {
+    auto map_start_pos = TYPE_11_PREFIX.size();
+    auto map_end_pos = line.find_first_of(')', map_start_pos);
+    if (map_end_pos == std::string::npos) {
+        return std::nullopt;
+    }
+
+    return std::wstring(line, map_start_pos, map_end_pos - map_start_pos);
+}
+
+static std::optional<news_item> parse_news_item_cmd(const std::wstring_view& line) {
+    /**
+     * @brief Extracts a csv-escaped field from the current line.
+     *
+     * @param start_pos The position of the first character of the field.
+     * @return A pair of the extracted string, and the position of the next field (or npos).
+     */
+    auto extract_csv_escaped = [&](auto start_pos) -> std::pair<std::wstring, size_t> {
+        // If the field is not escaped, simple comma search + return
+        if (line[start_pos] != '"') {
+            auto comma_pos = line.find_first_of(',', start_pos);
+            return {std::wstring(line, start_pos, comma_pos - start_pos),
+                    comma_pos == std::string::npos ? std::string::npos : comma_pos + 1};
+        }
+
+        std::wstringstream stream{};
+        auto quoted_start_pos = start_pos + 1;
+        auto quoted_end_pos = std::string::npos;
+        while (true) {
+            quoted_end_pos = line.find_first_of('"', quoted_start_pos);
+            stream << line.substr(quoted_start_pos, quoted_end_pos - quoted_start_pos);
+
+            // If we reached the end of the line
+            if (quoted_end_pos >= (line.size() - 1)) {
+                break;
+            }
+
+            // If this is not an escaped quote
+            if (line[quoted_end_pos + 1] != '"') {
+                break;
+            }
+
+            stream << '"';
+            // This might move past the end of the string, but will be caught on next loop
+            quoted_start_pos = quoted_end_pos + 2;
+        }
+
+        auto comma_pos = line.find_first_of(',', quoted_end_pos);
+        return {stream.str(), comma_pos == std::string::npos ? std::string::npos : comma_pos + 1};
+    };
+
+    auto header_start_pos = line.find_first_of(',') + 1;
+    auto [header, header_end_pos] = extract_csv_escaped(header_start_pos);
+
+    if (header_end_pos == std::string::npos) {
+        return {{header, L"", L"", L""}};
+    }
+
+    auto [image_url, image_url_end_pos] = extract_csv_escaped(header_end_pos);
+    if (image_url_end_pos == std::string::npos) {
+        return {{header, image_url, L"", L""}};
+    }
+
+    auto [article_url, article_url_end_pos] = extract_csv_escaped(image_url_end_pos);
+    return {{header, image_url, article_url,
+             article_url_end_pos == std::string::npos
+                 ? L""
+                 : std::wstring(line, article_url_end_pos, line.size() - article_url_end_pos)}};
+}
+
+static std::optional<std::filesystem::path> parse_exec_cmd(const std::wstring_view& line) {
+    auto exec_end_pos = EXEC_COMMAND.size();
+    if (WHITESPACE.find(line[exec_end_pos]) == std::string::npos) {
+        return std::nullopt;
+    }
+
+    auto path_start = line.find_first_not_of(WHITESPACE, exec_end_pos + 1);
+    if (path_start == std::string::npos) {
+        return std::nullopt;
+    }
+
+    auto path_end = line.find_last_not_of(WHITESPACE);
+    if (path_end == std::string::npos) {
+        path_end = line.size() - 1;
+    }
+
+    if (line[path_start] == '"' && line[path_end] == '"') {
+        path_start++;
+        path_end--;
+    }
+
+    return (mod_dir / line.substr(path_start, (path_end + 1) - path_start)).lexically_normal();
+}
+
+/**
+ * @brief Parses a url command.
+ *
+ * @param line The line to parse, without leading whitespace.
+ * @return The parsed url, or std::nullopt if unable to parse.
+ */
+static std::optional<std::wstring> parse_url_cmd(const std::wstring_view& line) {
+    return std::wstring(line, URL_COMMAND.size(), line.size() - URL_COMMAND.size());
+}
+
+TEST_CASE("loader::parse_url_cmd") {
+    CHECK(parse_url_cmd(L"url=https://example.com/mod.bl3hotfix") ==
+          L"https://example.com/mod.bl3hotfix");
+    CHECK(parse_url_cmd(L"url=  \"https://example.com/mod.bl3hotfix\"") ==
+          L"  \"https://example.com/mod.bl3hotfix\"");
+    CHECK(parse_url_cmd(L"URL=1234") == L"1234");
+}
+
 /**
  * @brief Loads this mod file from a stream.
  *
@@ -631,14 +775,16 @@ void mod_file::load_from_stream(std::istream& stream, bool allow_exec) {
     mod_data data{};
 
     for (std::string narrow_mod_line; std::getline(stream, narrow_mod_line);) {
-        std::wstring mod_line = ohl::util::widen(narrow_mod_line);
+        std::wstring wide_mod_line = ohl::util::widen(narrow_mod_line);
+        std::wstring_view mod_line{wide_mod_line};
 
         auto whitespace_end_pos = mod_line.find_first_not_of(WHITESPACE);
         if (whitespace_end_pos == std::wstring::npos) {
             continue;
         }
+        mod_line = mod_line.substr(whitespace_end_pos);
 
-        auto lower_mod_line = mod_line;
+        auto lower_mod_line = wide_mod_line;
         std::transform(lower_mod_line.begin(), lower_mod_line.end(), lower_mod_line.begin(),
                        std::towlower);
 
@@ -646,141 +792,51 @@ void mod_file::load_from_stream(std::istream& stream, bool allow_exec) {
          * @brief Checks if the current line starts with the specified command.
          * @note Should compare against lowercase strings.
          *
-         * @param str The command string to check.
+         * @param cmd The command string to check.
          * @return True if the line starts with the command, false otherwise.
          */
-        auto is_command = [&](auto str) {
-            return lower_mod_line.compare(whitespace_end_pos, str.size(), str) == 0;
+        auto is_command = [&](auto cmd) {
+            return lower_mod_line.compare(whitespace_end_pos, cmd.size(), cmd) == 0;
         };
 
         if (is_command(HOTFIX_COMMAND)) {
-            auto hotfix_type_end_pos = mod_line.find_first_of(',', whitespace_end_pos);
-            if (hotfix_type_end_pos == std::wstring::npos) {
-                continue;
-            }
+            auto hotfix = parse_hotfix_cmd(mod_line);
 
-            auto hotfix_type =
-                mod_line.substr(whitespace_end_pos, hotfix_type_end_pos - whitespace_end_pos);
-            auto hotfix = mod_line.substr(hotfix_type_end_pos + 1);
-
-            if (is_command(TYPE_11_PREFIX)) {
-                auto map_start_pos = whitespace_end_pos + TYPE_11_PREFIX.size();
-                auto map_end_pos = mod_line.find_first_of(')', map_start_pos);
-                if (map_end_pos != std::string::npos) {
-                    auto map = mod_line.substr(map_start_pos, map_end_pos - map_start_pos);
-                    data.type_11_maps.insert(map);
-                    data.type_11_hotfixes.push_back({hotfix_type, hotfix});
-                    continue;
+            if (hotfix) {
+                if (is_command(TYPE_11_PREFIX)) {
+                    auto map = parse_type_11_map(mod_line);
+                    if (map) {
+                        data.type_11_hotfixes.push_back(*hotfix);
+                        data.type_11_maps.insert(*map);
+                        continue;
+                    }
                 }
-            }
 
-            data.hotfixes.push_back({hotfix_type, hotfix});
+                data.hotfixes.push_back(*hotfix);
+            }
         } else if (is_command(NEWS_COMMAND)) {
-            /**
-             * @brief Extracts a csv-escaped field from the current line.
-             *
-             * @param start_pos The position of the first character of the field.
-             * @return A pair of the extracted string, and the position of the next field (or npos).
-             */
-            auto extract_csv_escaped = [&](auto start_pos) -> std::pair<std::wstring, size_t> {
-                // If the field is not escaped, simple comma search + return
-                if (mod_line[start_pos] != '"') {
-                    auto comma_pos = mod_line.find_first_of(',', start_pos);
-                    return {mod_line.substr(start_pos, comma_pos - start_pos),
-                            comma_pos == std::string::npos ? std::string::npos : comma_pos + 1};
-                }
+            auto news_item = parse_news_item_cmd(mod_line);
 
-                std::wstringstream stream{};
-                auto quoted_start_pos = start_pos + 1;
-                auto quoted_end_pos = std::string::npos;
-                while (true) {
-                    quoted_end_pos = mod_line.find_first_of('"', quoted_start_pos);
-                    stream << mod_line.substr(quoted_start_pos, quoted_end_pos - quoted_start_pos);
-
-                    // If we reached the end of the line
-                    if (quoted_end_pos >= (mod_line.size() - 1)) {
-                        break;
-                    }
-
-                    // If this is not an escaped quote
-                    if (mod_line[quoted_end_pos + 1] != '"') {
-                        break;
-                    }
-
-                    stream << '"';
-                    // This might move past the end of the string, but will be caught on next loop
-                    quoted_start_pos = quoted_end_pos + 2;
-                }
-
-                auto comma_pos = mod_line.find_first_of(',', quoted_end_pos);
-                return {stream.str(),
-                        comma_pos == std::string::npos ? std::string::npos : comma_pos + 1};
-            };
-
-            auto header_start_pos = mod_line.find_first_of(',', whitespace_end_pos) + 1;
-            auto [header, header_end_pos] = extract_csv_escaped(header_start_pos);
-
-            if (header_end_pos == std::string::npos) {
-                data.news_items.push_back({header, L"", L"", L""});
-                continue;
+            if (news_item) {
+                data.news_items.push_back(*news_item);
             }
-
-            auto [image_url, image_url_end_pos] = extract_csv_escaped(header_end_pos);
-            if (image_url_end_pos == std::string::npos) {
-                data.news_items.push_back({header, image_url, L"", L""});
-                continue;
-            }
-
-            auto [article_url, article_url_end_pos] = extract_csv_escaped(image_url_end_pos);
-            data.news_items.push_back({header, image_url, article_url,
-                                       article_url_end_pos == std::string::npos
-                                           ? L""
-                                           : mod_line.substr(article_url_end_pos)});
         } else if (allow_exec && is_command(EXEC_COMMAND)) {
-            auto exec_end_pos = whitespace_end_pos + EXEC_COMMAND.size();
-            if (WHITESPACE.find(mod_line[exec_end_pos]) == std::string::npos) {
-                continue;
+            auto path = parse_exec_cmd(mod_line);
+
+            if (path) {
+                // Push our current data, and create a new one for use after loading the file.
+                this->push_mod_data(data);
+                this->register_remote_file(std::make_shared<mod_file_local>(*path));
+                data = mod_data{};
             }
-
-            auto path_start = mod_line.find_first_not_of(WHITESPACE, exec_end_pos + 1);
-            if (path_start == std::string::npos) {
-                continue;
-            }
-
-            auto path_end = mod_line.find_last_not_of(WHITESPACE);
-            if (path_end == std::string::npos) {
-                path_end = mod_line.size() - 1;
-            }
-
-            if (mod_line[path_start] == '"' && mod_line[path_end] == '"') {
-                path_start++;
-                path_end--;
-            }
-
-            auto path = (mod_dir / mod_line.substr(path_start, (path_end + 1) - path_start))
-                            .lexically_normal();
-
-            // Push our current data, and create a new one for use after loading the file.
-            // Required to keep proper ordering, the executed file should act as if it was included
-            //  in the middle of the file we're currently reading.
-            if (!data.is_empty()) {
-                sections.push_back(data);
-                mod_data new_data{};
-                data = new_data;
-            }
-
-            this->register_remote_file(std::make_shared<mod_file_local>(path));
         } else if (is_command(URL_COMMAND)) {
-            auto url = mod_line.substr(whitespace_end_pos + URL_COMMAND.size());
+            auto url = parse_url_cmd(mod_line);
 
-            // Create new data if needed, as above
-            if (!data.is_empty()) {
-                sections.push_back(data);
-                mod_data new_data{};
-                data = new_data;
+            if (url) {
+                this->push_mod_data(data);
+                this->register_remote_file(std::make_shared<mod_file_url>(*url));
+                data = mod_data{};
             }
-
-            this->register_remote_file(std::make_shared<mod_file_url>(url));
         }
     }
 
@@ -789,17 +845,17 @@ void mod_file::load_from_stream(std::istream& stream, bool allow_exec) {
     }
 }
 
+#pragma endregion
+
 /**
- * @brief Creates the news item for OHL, based on the given mod data.
+ * @brief Creates the news item for OHL.
  *
- * @param data The mod data to base the news off of.
+ * @param hotfix_count The amount of injected hotfixes
  * @param file_order The injected mod files, in the order they were loaded.
  * @return The OHL news item.
  */
-static news_item get_ohl_news_item(const mod_data& data,
+static news_item get_ohl_news_item(size_t hotfix_count,
                                    std::vector<std::shared_ptr<mod_file>> file_order) {
-    auto size = data.hotfixes.size();
-
     // If we're in BL3, colour the name.
     // WL doesn't support font tags :(
     std::wstring ohl_name;
@@ -812,16 +868,16 @@ static news_item get_ohl_news_item(const mod_data& data,
     }
 
     std::wstring header;
-    if (size > 1) {
-        header = ohl_name + L": " + std::to_wstring(size) + L" hotfixes loaded";
-    } else if (size == 1) {
+    if (hotfix_count > 1) {
+        header = ohl_name + L": " + std::to_wstring(hotfix_count) + L" hotfixes loaded";
+    } else if (hotfix_count == 1) {
         header = ohl_name + L": 1 hotfix loaded";
     } else {
         header = ohl_name + L": No hotfixes loaded";
     }
 
     std::wstring body;
-    if (size == 0) {
+    if (hotfix_count == 0) {
         body = L"No hotfixes loaded";
     } else {
         std::wstringstream stream{};
@@ -836,6 +892,8 @@ static news_item get_ohl_news_item(const mod_data& data,
 
     return {header, OHL_NEWS_ITEM_IMAGE_URL, OHL_NEWS_ITEM_ARTICLE_URL, body};
 }
+
+#pragma region Public interface
 
 static std::mutex reloading_mutex;
 static mod_data loaded_mod_data;
@@ -912,7 +970,8 @@ static void reload_impl(void) {
         file_order.push_back(file);
     }
 
-    combined_mod_data.news_items.push_front(get_ohl_news_item(combined_mod_data, file_order));
+    combined_mod_data.news_items.push_front(
+        get_ohl_news_item(combined_mod_data.hotfixes.size(), file_order));
 
     LOGD << "[OHL] Replacing globals";
 
@@ -947,6 +1006,8 @@ std::deque<news_item> get_news_items(void) {
 
     return loaded_mod_data.news_items;
 }
+
+#pragma endregion
 
 TEST_SUITE_END();
 }  // namespace ohl::loader

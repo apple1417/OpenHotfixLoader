@@ -8,11 +8,11 @@ namespace ohl::loader {
  * @brief Struct representing a single hotfix entry.
  */
 struct hotfix {
-    std::wstring type;
+    std::wstring key;
     std::wstring value;
 
     bool operator==(const hotfix& rhs) const {
-        return this->type == rhs.type && this->value == rhs.value;
+        return this->key == rhs.key && this->value == rhs.value;
     }
     bool operator!=(const hotfix& rhs) const { return !operator==(rhs); }
 };

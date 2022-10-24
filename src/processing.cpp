@@ -260,10 +260,10 @@ void handle_discovery_from_json(FJsonObject** json) {
     LOGD << "[OHL] Injecting hotfixes";
 
     auto i = params->entries.count;
-    for (const auto& [key, hotfix] : hotfixes) {
+    for (const auto& [key, value] : hotfixes) {
         auto hotfix_entry = create_json_object<2>(
             {{{L"key", create_json_string(key + std::to_wstring(i + HOTFIX_COUNTER_OFFSET))},
-              {L"value", create_json_string(hotfix)}}});
+              {L"value", create_json_string(value)}}});
 
         params->entries.data[i].obj = create_json_value_object(hotfix_entry);
         add_ref_controller(&params->entries.data[i], vf_table.shared_ptr_json_value);
