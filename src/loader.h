@@ -11,6 +11,9 @@ struct hotfix {
     std::wstring key;
     std::wstring value;
 
+    hotfix(const std::wstring& key = L"", const std::wstring& value = L"")
+        : key(key), value(value) {}
+
     bool operator==(const hotfix& rhs) const {
         return this->key == rhs.key && this->value == rhs.value;
     }
@@ -25,6 +28,12 @@ struct news_item {
     std::wstring image_url;
     std::wstring article_url;
     std::wstring body;
+
+    news_item(const std::wstring& header = L"",
+              const std::wstring& image_url = L"",
+              const std::wstring& article_url = L"",
+              const std::wstring& body = L"")
+        : header(header), image_url(image_url), article_url(article_url), body(body) {}
 
     bool operator==(const news_item& rhs) const {
         return this->header == rhs.header && this->image_url == rhs.image_url

@@ -150,16 +150,16 @@ TEST_CASE("loader::mod_data::is_empty") {
     REQUIRE(data.is_empty() == true);
 
     mod_data data_hotfix{};
-    data_hotfix.hotfixes.push_back({});
+    data_hotfix.hotfixes.emplace_back();
 
     mod_data data_type_11_hotfix{};
-    data_type_11_hotfix.type_11_hotfixes.push_back({});
+    data_type_11_hotfix.type_11_hotfixes.emplace_back();
 
     mod_data data_type_11_map{};
     data_type_11_map.type_11_maps.insert(L"");
 
     mod_data data_news{};
-    data_news.news_items.push_back({});
+    data_news.news_items.emplace_back();
 
     CHECK(data_hotfix.is_empty() == false);
     CHECK(data_type_11_hotfix.is_empty() == false);
@@ -204,7 +204,7 @@ class mod_file {
      */
     void register_remote_file(const std::shared_ptr<mod_file> file) {
         auto identifier = file->get_identifier();
-        this->sections.push_back(remote_mod_data{identifier});
+        this->sections.emplace_back(identifier);
 
         bool is_known = true;
 
@@ -663,8 +663,8 @@ static void parse_and_append_hotfix_cmd(const std::wstring_view& line, mod_data&
     // map_start_pos --------------------+      |
     // map_end_pos -----------------------------+
 
-    hotfix hf{std::wstring(line, 0, key_end_pos),
-              std::wstring(line, key_end_pos + 1, std::string::npos)};
+    std::wstring key(line, 0, key_end_pos);
+    std::wstring value(line, key_end_pos + 1, std::string::npos);
 
     // Check if it's a type 11, and extract the map
     auto type_start_pos = line.find_first_of(',', key_end_pos + 1) + 1;
@@ -674,14 +674,13 @@ static void parse_and_append_hotfix_cmd(const std::wstring_view& line, mod_data&
         auto map_start_pos = line.find_first_of(',', type_end_pos + 1) + 1;
         auto map_end_pos = line.find_first_of(')', map_start_pos);
         if (map_end_pos != std::string::npos) {
-            std::wstring map(line, map_start_pos, map_end_pos - map_start_pos);
-            data.type_11_hotfixes.push_back(hf);
-            data.type_11_maps.insert(map);
+            data.type_11_hotfixes.emplace_back(key, value);
+            data.type_11_maps.emplace(line, map_start_pos, map_end_pos - map_start_pos);
             return;
         }
     }
 
-    data.hotfixes.push_back(hf);
+    data.hotfixes.emplace_back(key, value);
 }
 
 TEST_CASE("loader::parse_and_append_hotfix_cmd") {
@@ -982,7 +981,7 @@ static void reload_impl(void) {
             auto hotfix = std::wstring(TYPE_11_DELAY_VALUE)
                               .replace(mesh_start_pos, mesh_length, mesh)
                               .replace(map_start_pos, map_length, map);
-            combined_mod_data.type_11_hotfixes.push_back({TYPE_11_DELAY_TYPE, hotfix});
+            combined_mod_data.type_11_hotfixes.emplace_back(TYPE_11_DELAY_TYPE, hotfix);
         }
     }
     for (auto it = combined_mod_data.type_11_hotfixes.rbegin();
