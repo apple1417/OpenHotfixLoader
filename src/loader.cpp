@@ -718,88 +718,204 @@ TEST_CASE("loader::parse_and_append_hotfix_cmd") {
     REQUIRE(data.news_items.size() == 0);
 }
 
-static std::optional<news_item> parse_news_item_cmd(const std::wstring_view& line) {
-    /**
-     * @brief Extracts a csv-escaped field from the current line.
-     *
-     * @param start_pos The position of the first character of the field.
-     * @return A pair of the extracted string, and the position of the next field (or npos).
-     */
-    auto extract_csv_escaped = [&](auto start_pos) -> std::pair<std::wstring, size_t> {
-        // If the field is not escaped, simple comma search + return
-        if (line[start_pos] != '"') {
-            auto comma_pos = line.find_first_of(',', start_pos);
-            return {std::wstring(line, start_pos, comma_pos - start_pos),
-                    comma_pos == std::string::npos ? std::string::npos : comma_pos + 1};
+/**
+ * @brief Extracts the next csv field from a line, unescaping it if necessary.
+ * @note Callers must ensure the line is not empty.
+ *
+ * @param line A view of the current line. Will be modified to advance past the extracted field.
+ * @return A new string containing the extracted/escaped field.
+ */
+static std::wstring extract_csv_escaped(std::wstring_view& line) {
+    // If the field is not escaped, simple comma search + return
+    // This will (deliberately) throw an out of range if the line is empty
+    if (line[0] != '"') {
+        auto comma_pos = line.find_first_of(',', 0);
+        std::wstring ret(line, 0, comma_pos);
+
+        if (comma_pos == std::string::npos) {
+            line = L"";
+        } else {
+            line = line.substr(comma_pos + 1);
         }
 
-        std::wstringstream stream{};
-        auto quoted_start_pos = start_pos + 1;
-        auto quoted_end_pos = std::string::npos;
-        while (true) {
-            quoted_end_pos = line.find_first_of('"', quoted_start_pos);
-            stream << line.substr(quoted_start_pos, quoted_end_pos - quoted_start_pos);
+        return ret;
+    }
 
-            // If we reached the end of the line
-            if (quoted_end_pos >= (line.size() - 1)) {
-                break;
-            }
+    std::wstringstream stream{};
+    auto quoted_start_pos = 1;
+    auto quoted_end_pos = std::string::npos;
+    while (true) {
+        quoted_end_pos = line.find_first_of('"', quoted_start_pos);
+        stream << line.substr(quoted_start_pos, quoted_end_pos - quoted_start_pos);
 
-            // If this is not an escaped quote
-            if (line[quoted_end_pos + 1] != '"') {
-                break;
-            }
-
-            stream << '"';
-            // This might move past the end of the string, but will be caught on next loop
-            quoted_start_pos = quoted_end_pos + 2;
+        // If we reached the end of the line
+        if (quoted_end_pos >= (line.size() - 1)) {
+            break;
         }
 
-        auto comma_pos = line.find_first_of(',', quoted_end_pos);
-        return {stream.str(), comma_pos == std::string::npos ? std::string::npos : comma_pos + 1};
-    };
+        // If this is not an escaped quote
+        if (line[quoted_end_pos + 1] != '"') {
+            break;
+        }
 
-    auto header_start_pos = line.find_first_of(',') + 1;
-    auto [header, header_end_pos] = extract_csv_escaped(header_start_pos);
-
-    if (header_end_pos == std::string::npos) {
-        return {{header, L"", L"", L""}};
+        stream << '"';
+        // This might move past the end of the string, but will be caught on next loop
+        quoted_start_pos = quoted_end_pos + 2;
     }
 
-    auto [image_url, image_url_end_pos] = extract_csv_escaped(header_end_pos);
-    if (image_url_end_pos == std::string::npos) {
-        return {{header, image_url, L"", L""}};
+    auto comma_pos = line.find_first_of(',', quoted_end_pos);
+    if (comma_pos == std::string::npos) {
+        line = L"";
+    } else {
+        line = line.substr(comma_pos + 1);
     }
 
-    auto [article_url, article_url_end_pos] = extract_csv_escaped(image_url_end_pos);
-    return {{header, image_url, article_url,
-             article_url_end_pos == std::string::npos
-                 ? L""
-                 : std::wstring(line, article_url_end_pos, line.size() - article_url_end_pos)}};
+    return stream.str();
 }
 
-static std::optional<std::filesystem::path> parse_exec_cmd(const std::wstring_view& line) {
-    auto exec_end_pos = EXEC_COMMAND.size();
-    if (WHITESPACE.find(line[exec_end_pos]) == std::string::npos) {
-        return std::nullopt;
+TEST_CASE("loader::extract_csv_escaped") {
+    const std::wstring CSV_STRING = L"normal,,,\"quoted\",\"escaped,comma\",\"escaped\"\"quote\"";
+    std::wstring_view csv{CSV_STRING};
+
+    CHECK(extract_csv_escaped(csv) == L"normal");
+    REQUIRE(csv == L",,\"quoted\",\"escaped,comma\",\"escaped\"\"quote\"");
+
+    CHECK(extract_csv_escaped(csv) == L"");
+    REQUIRE(csv == L",\"quoted\",\"escaped,comma\",\"escaped\"\"quote\"");
+    CHECK(extract_csv_escaped(csv) == L"");
+    REQUIRE(csv == L"\"quoted\",\"escaped,comma\",\"escaped\"\"quote\"");
+
+    CHECK(extract_csv_escaped(csv) == L"quoted");
+    REQUIRE(csv == L"\"escaped,comma\",\"escaped\"\"quote\"");
+
+    CHECK(extract_csv_escaped(csv) == L"escaped,comma");
+    REQUIRE(csv == L"\"escaped\"\"quote\"");
+
+    CHECK(extract_csv_escaped(csv) == L"escaped\"quote");
+    REQUIRE(csv == L"");
+}
+
+/**
+ * @brief Parses a news item command, and appends it to the given mod data.
+ *
+ * @param line The line to parse, without leading whitespace.
+ * @param data The mod data object to append hotfixes to.
+ */
+static void parse_and_append_news_item_cmd(const std::wstring_view& line, mod_data& data) {
+    auto cmd_end_pos = line.find_first_of(',');
+    auto csv_view = line.substr(cmd_end_pos + 1);
+
+    std::wstring header;
+    std::wstring image_url;
+    std::wstring article_url;
+    std::wstring body;
+
+    header = extract_csv_escaped(csv_view);
+    if (!csv_view.empty()) {
+        image_url = extract_csv_escaped(csv_view);
+        if (!csv_view.empty()) {
+            article_url = extract_csv_escaped(csv_view);
+            if (!csv_view.empty()) {
+                body = std::wstring(csv_view);
+            }
+        }
     }
 
-    auto path_start = line.find_first_not_of(WHITESPACE, exec_end_pos + 1);
+    data.news_items.emplace_back(header, image_url, article_url, body);
+}
+
+TEST_CASE("loader::parse_and_append_news_item_cmd") {
+    mod_data data;
+
+    parse_and_append_news_item_cmd(L"InjectNewsItem,Header", data);
+    REQUIRE(data.news_items.size() == 1);
+    REQUIRE(data.news_items[0] == news_item{L"Header"});
+
+    parse_and_append_news_item_cmd(L"InjectNewsItem,  Header  ,image.png", data);
+    REQUIRE(data.news_items.size() == 2);
+    REQUIRE(data.news_items[1] == news_item{L"  Header  ", L"image.png"});
+
+    parse_and_append_news_item_cmd(L"InjectNewsItem,Header,\"escaped,image.png\"", data);
+    REQUIRE(data.news_items.size() == 3);
+    REQUIRE(data.news_items[2] == news_item{L"Header", L"escaped,image.png"});
+
+    parse_and_append_news_item_cmd(L"InjectNewsItem,\"Header\",\"escaped,image.png\"", data);
+    REQUIRE(data.news_items.size() == 4);
+    REQUIRE(data.news_items[3] == news_item{L"Header", L"escaped,image.png"});
+
+    parse_and_append_news_item_cmd(L"InjectNewsItem,\"Header\",,Article", data);
+    REQUIRE(data.news_items.size() == 5);
+    REQUIRE(data.news_items[4] == news_item{L"Header", L"", L"Article"});
+
+    parse_and_append_news_item_cmd(L"InjectNewsItem,, \t ,\"Article\"", data);
+    REQUIRE(data.news_items.size() == 6);
+    REQUIRE(data.news_items[5] == news_item{L"", L" \t ", L"Article"});
+
+    parse_and_append_news_item_cmd(L"InjectNewsItem,Header,image.png,\"Article \"\"URL\"\"", data);
+    REQUIRE(data.news_items.size() == 7);
+    REQUIRE(data.news_items[6] == news_item{L"Header", L"image.png", L"Article \"URL\""});
+
+    parse_and_append_news_item_cmd(L"InjectNewsItem,,image.png,Article,Body", data);
+    REQUIRE(data.news_items.size() == 8);
+    REQUIRE(data.news_items[7] == news_item{L"", L"image.png", L"Article", L"Body"});
+
+    parse_and_append_news_item_cmd(
+        L"InjectNewsItem,Header,image.png,Article,Body, with commas, and \"quotes\"", data);
+    REQUIRE(data.news_items.size() == 9);
+    REQUIRE(
+        data.news_items[8]
+        == news_item{L"Header", L"image.png", L"Article", L"Body, with commas, and \"quotes\""});
+
+    parse_and_append_news_item_cmd(L"InjectNewsItem,,,,,,Body, with commas, and \"quotes\"", data);
+    REQUIRE(data.news_items.size() == 10);
+    REQUIRE(data.news_items[9] == news_item{L"", L"", L"", L",,Body, with commas, and \"quotes\""});
+
+    REQUIRE(data.hotfixes.size() == 0);
+    REQUIRE(data.type_11_hotfixes.size() == 0);
+    REQUIRE(data.type_11_maps.size() == 0);
+}
+
+/**
+ * @brief Parses an exec command and extracts the path to execute.
+ *
+ * @param line The line to parse, without leading whitespace.
+ * @return The path to the file to execute, or std::nullopt if parsing failed.
+ */
+static std::optional<std::filesystem::path> parse_exec_cmd(const std::wstring_view& line) {
+    auto whitespace_start = line.find_first_of(WHITESPACE);
+    auto path_start = line.find_first_not_of(WHITESPACE, whitespace_start + 1);
     if (path_start == std::string::npos) {
         return std::nullopt;
     }
 
+    // The standard exec command actually only grabs the first word
+    // We will instead be permissive, and grab all text (except trailing whitespace), so that things
+    //  just work more often - though strictly this shouldn't be considered a defined feature
     auto path_end = line.find_last_not_of(WHITESPACE);
     if (path_end == std::string::npos) {
         path_end = line.size() - 1;
     }
 
-    if (line[path_start] == '"' && line[path_end] == '"') {
+    // If someone quoted the path (e.g. for another, less permissive tool), strip quotes
+    if ((line[path_start] == '"' && line[path_end] == '"')
+        || (line[path_start] == '\'' && line[path_end] == '\'')) {
         path_start++;
         path_end--;
     }
 
     return (mod_dir / line.substr(path_start, (path_end + 1) - path_start)).lexically_normal();
+}
+
+TEST_CASE("loader::parse_exec_cmd") {
+    CHECK(parse_exec_cmd(L"exec abc.bl3hotfix") == (mod_dir / "abc.bl3hotfix"));
+    CHECK(parse_exec_cmd(L"exec   \t      abc.bl3hotfix      ") == (mod_dir / "abc.bl3hotfix"));
+    CHECK(parse_exec_cmd(L"exec nested/path.bl3hotfix") == (mod_dir / "nested" / "path.bl3hotfix"));
+    CHECK(parse_exec_cmd(L"exec D:\\absolute\\path.bl3hotfix")
+          == std::filesystem::path("D:\\") / "absolute" / "path.bl3hotfix");
+    CHECK(parse_exec_cmd(L"exec \"path with spaces.bl3hotfix\"")
+          == (mod_dir / "path with spaces.bl3hotfix"));
+    CHECK(parse_exec_cmd(L"exec  '  more spaces.bl3hotfix'")
+          == (mod_dir / "  more spaces.bl3hotfix"));
 }
 
 /**
@@ -857,11 +973,7 @@ void mod_file::load_from_stream(std::istream& stream, bool allow_exec) {
         if (is_command(HOTFIX_COMMAND)) {
             parse_and_append_hotfix_cmd(mod_line, data);
         } else if (is_command(NEWS_COMMAND)) {
-            auto news_item = parse_news_item_cmd(mod_line);
-
-            if (news_item) {
-                data.news_items.push_back(*news_item);
-            }
+            parse_and_append_news_item_cmd(mod_line, data);
         } else if (allow_exec && is_command(EXEC_COMMAND)) {
             auto path = parse_exec_cmd(mod_line);
 
@@ -882,9 +994,7 @@ void mod_file::load_from_stream(std::istream& stream, bool allow_exec) {
         }
     }
 
-    if (!data.is_empty()) {
-        this->sections.push_back(data);
-    }
+    this->push_mod_data(data);
 }
 
 #pragma endregion
