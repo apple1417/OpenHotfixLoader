@@ -341,7 +341,7 @@ class mod_file_local : public mod_file {
     }
 
     TEST_CASE_CLASS("loader::mod_file_local::load - load_from_stream identical") {
-        mod_file_local local_file{"tests/loader_load_from_stream/basic_mod.bl3hotfix"};
+        mod_file_local local_file{"tests/basic_mod.bl3hotfix"};
         mod_file_local stream_file{"dummy"};
 
         std::stringstream stream{};
@@ -433,7 +433,7 @@ class mod_file_local : public mod_file {
 };
 
 TEST_CASE("loader::mod_file::append_to") {
-    mod_file_local file{"tests/loader_load_from_stream/basic_mod.bl3hotfix"};
+    mod_file_local file{"tests/basic_mod.bl3hotfix"};
     file.load();
 
     REQUIRE(file.sections.size() == 1);
@@ -539,7 +539,7 @@ class mod_file_url : public mod_file {
     TEST_CASE_CLASS("loader::mod_file_url::load - load_from_stream identical") {
         mod_file_url url_file{
             L"https://raw.githubusercontent.com/apple1417/OpenHotfixLoader/master/tests/"
-            L"loader_load_from_stream/basic_mod.bl3hotfix"};
+            L"basic_mod.bl3hotfix"};
         mod_file_url stream_file{L"dummy"};
 
         std::stringstream stream{};
@@ -612,12 +612,12 @@ class mods_folder : public mod_file {
 
     TEST_CASE_CLASS("loader::mods_folder::load") {
         auto original_mod_dir = mod_dir;
-        mod_dir = std::filesystem::path("tests") / "utils_sorted_files";
+        mod_dir = std::filesystem::path("tests") / "sorted_files";
 
         const std::vector<mod_file_identifier> expected_identifiers = {
-            L"tests\\utils_sorted_files\\1.txt",  L"tests\\utils_sorted_files\\5.txt",
-            L"tests\\utils_sorted_files\\10.txt", L"tests\\utils_sorted_files\\a.txt",
-            L"tests\\utils_sorted_files\\b.txt",  L"tests\\utils_sorted_files\\c.txt",
+            L"tests\\sorted_files\\1.txt",  L"tests\\sorted_files\\5.txt",
+            L"tests\\sorted_files\\10.txt", L"tests\\sorted_files\\a.txt",
+            L"tests\\sorted_files\\b.txt",  L"tests\\sorted_files\\c.txt",
         };
 
         SUBCASE("") {
