@@ -15,6 +15,7 @@
 #include <plog/Log.h>
 
 #include <array>
+#include <atomic>
 #include <codecvt>
 #include <cstdint>
 #include <cwchar>

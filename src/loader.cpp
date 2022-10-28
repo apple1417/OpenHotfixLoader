@@ -1156,6 +1156,7 @@ TEST_CASE("loader::get_ohl_news_item") {
 #pragma region Public interface
 
 static std::mutex reloading_mutex;
+static std::atomic<bool> reloading_started{false};
 static mod_data loaded_mod_data;
 
 /**
@@ -1164,6 +1165,7 @@ static mod_data loaded_mod_data;
  */
 static void reload_impl(void) {
     std::lock_guard<std::mutex> lock(reloading_mutex);
+    reloading_started = true;
 
     SetThreadDescription(GetCurrentThread(), L"OpenHotfixLoader Loader");
 
@@ -1251,8 +1253,14 @@ void init(void) {
 }
 
 void reload(void) {
+    reloading_started = false;
+
     std::thread thread(reload_impl);
     thread.detach();
+
+    // Busy wait for the thread to start before exiting
+    while (!reloading_started);
+    reloading_started = false;
 }
 
 std::deque<hotfix> get_hotfixes(void) {
