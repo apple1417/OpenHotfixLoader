@@ -23,7 +23,6 @@ static const std::wstring NEWS_COMMAND = L"injectnewsitem";
 static const std::wstring EXEC_COMMAND = L"exec";
 static const std::wstring URL_COMMAND = L"url=";
 
-static const std::wstring TYPE_11_PREFIX = L"sparkearlylevelpatchentry,(1,11,0,";
 static const std::wstring TYPE_11_DELAY_TYPE = L"SparkEarlyLevelPatchEntry";
 static const std::wstring TYPE_11_DELAY_VALUE =
     L"(1,1,0,{map}),/Game/Pickups/Ammo/"
@@ -39,11 +38,9 @@ static const std::vector<std::wstring> TYPE_11_DELAY_MESHES = {
     L"/Game/Pickups/Ammo/Model/Meshes/SM_ammo_pistol.SM_ammo_pistol",
 };
 
-static const std::wstring OHL_NEWS_ITEM_IMAGE_URL =
-    L"https://raw.githubusercontent.com/apple1417/OpenHotfixLoader/master/news_icon.png";
+static const std::wstring OHL_NEWS_ITEM_IMAGE_URL = L"" OHL_GITHUB_RAW_URL "news_icon.png";
 
-static const std::wstring OHL_NEWS_ITEM_ARTICLE_URL =
-    L"https://github.com/apple1417/OpenHotfixLoader/releases";
+static const std::wstring OHL_NEWS_ITEM_ARTICLE_URL = L"" OHL_GITHUB_URL "releases";
 
 #pragma endregion
 
@@ -232,8 +229,12 @@ class mod_file {
      *
      * @param data The mod data object to append to.
      * @param seen_files A list of files which have already been seen. Any nested files which have
-     *                   yet to be seen will be appended in the order encountered.
+     *                   yet to be seen will be appended in the order encountered. Optional.
      */
+    void append_to(mod_data& data) {
+        std::vector<mod_file_identifier> seen_files;
+        this->append_to(data, seen_files);
+    }
     void append_to(mod_data& data, std::vector<mod_file_identifier>& seen_files) {
         this->join();
 
@@ -341,7 +342,7 @@ class mod_file_local : public mod_file {
     }
 
     TEST_CASE_CLASS("loader::mod_file_local::load - load_from_stream identical") {
-        mod_file_local local_file{"tests/basic_mod.bl3hotfix"};
+        mod_file_local local_file{std::filesystem::path("tests") / "basic_mod.bl3hotfix"};
         mod_file_local stream_file{"dummy"};
 
         std::stringstream stream{};
@@ -433,7 +434,7 @@ class mod_file_local : public mod_file {
 };
 
 TEST_CASE("loader::mod_file::append_to") {
-    mod_file_local file{"tests/basic_mod.bl3hotfix"};
+    mod_file_local file{std::filesystem::path("tests") / "basic_mod.bl3hotfix"};
     file.load();
 
     REQUIRE(file.sections.size() == 1);
@@ -537,9 +538,7 @@ class mod_file_url : public mod_file {
     };
 
     TEST_CASE_CLASS("loader::mod_file_url::load - load_from_stream identical") {
-        mod_file_url url_file{
-            L"https://raw.githubusercontent.com/apple1417/OpenHotfixLoader/master/tests/"
-            L"basic_mod.bl3hotfix"};
+        mod_file_url url_file{L"" OHL_GITHUB_RAW_URL "tests/basic_mod.bl3hotfix"};
         mod_file_url stream_file{L"dummy"};
 
         std::stringstream stream{};
@@ -995,6 +994,96 @@ void mod_file::load_from_stream(std::istream& stream, bool allow_exec) {
     }
 
     this->push_mod_data(data);
+}
+
+TEST_CASE("loader::mod_file_local::load") {
+    const hotfix basic_mod_hotfix{
+        L"SparkLevelPatchEntry",
+        L"(1,1,1,Crypt_P),/Game/Cinematics/_Design/NPCs/"
+        "BPCine_Actor_Typhon.BPCine_Actor_Typhon_C:SkeletalMesh_GEN_VARIABLE,"
+        "bEnableUpdateRateOptimizations,4,True,False"};
+    const hotfix unicode_statement_hotfix{L"SparkPatchEntry",
+            (wchar_t*)u"(1,1,0,),/Game/PatchDLC/Raid1/Gear/Weapons/Link/"
+                      u"Name_MAL_SM_Link.Name_MAL_SM_Link,PartName,0,,Cú Chulainn"};
+    const hotfix sliding_hotfix{L"SparkPatchEntry",
+                                L"(1,1,0,),/Game/PlayerCharacters/_Shared/_Design/Sliding/"
+                                L"ControlledMove_Global_Sliding.Default__ControlledMove_Global_"
+                                L"Sliding_C,Duration.BaseValueConstant,0,,5000"};
+
+    const std::vector<std::pair<std::string, mod_data>> PARAMETERIZED_CASES{
+        {"basic_mod.bl3hotfix", {{basic_mod_hotfix}, {}, {}, {}}},
+        {"basic_mod.URL", {{basic_mod_hotfix}, {}, {}, {}}},
+        {"unicode_statement.bl3hotfix", {{unicode_statement_hotfix}, {}, {}, {}}},
+        {"easy_entry_to_fort_sunshine.bl3hotfix",
+         {{{L"SparkEarlyLevelPatchEntry",
+            L"(1,1,1,Wetlands_P),/Game/Maps/Zone_2/Wetlands/"
+            L"Wetlands_P.Wetlands_P:PersistentLevel.IO_Switch_Industrial_Prison_C_0."
+            L"DefaultSceneRoot,"
+            L"RelativeLocation,0,,(X=34927.000000,Y=10709.000000,Z=3139.000000)"},
+           {L"SparkEarlyLevelPatchEntry",
+            L"(1,1,1,Wetlands_P),/Game/Maps/Zone_2/Wetlands/"
+            L"Wetlands_P.Wetlands_P:PersistentLevel.IO_Switch_Industrial_Prison_C_0."
+            L"DefaultSceneRoot,"
+            L"RelativeRotation,0,,(Pitch=0.000000,Yaw=67.716370,Roll=0.000000)"},
+           {L"SparkEarlyLevelPatchEntry",
+            L"(1,1,1,Wetlands_P),/Game/Maps/Zone_2/Wetlands/"
+            L"Wetlands_P.Wetlands_P:PersistentLevel.IO_Switch_Industrial_Prison_C_0."
+            L"DefaultSceneRoot,"
+            L"RelativeScale3D,0,,(X=1.000000,Y=1.000000,Z=1.000000)"},
+           {L"SparkLevelPatchEntry",
+            L"(1,1,0,Wetlands_P),/Game/Maps/Zone_2/Wetlands/"
+            L"Wetlands_P.Wetlands_P:PersistentLevel.IO_Switch_Industrial_Prison_C_0,On_SwitchUsed,"
+            L"0,,("
+            L"Wetlands_M_EP12JakobsRebellion_C_11.BndEvt__IO_Switch_Circuit_Breaker_V_2_K2Node_"
+            L"ActorBoundEvent_0_On_SwitchUsed__DelegateSignature)"},
+           {L"SparkLevelPatchEntry",
+            L"(1,1,0,Wetlands_P),/Game/Maps/Zone_2/Wetlands/"
+            L"Wetlands_P.Wetlands_P:PersistentLevel.IO_Switch_Industrial_Prison_C_0,"
+            L"SingleActivation,"
+            L"0,,False"}},
+          {{L"SparkEarlyLevelPatchEntry",
+            L"(1,11,0,Wetlands_P),/Game/Maps/Zone_2/Wetlands,/Game/InteractiveObjects/Switches/"
+            L"Lever/"
+            L"Design,IO_Switch_Industrial_Prison,80,\"0.000000,0.000000,0.000000|0.000000,0.000000,"
+            L"0."
+            L"000000|1.000000,1.000000,1.000000\""}},
+          {L"Wetlands_P"},
+          {}}},
+        {"single_exec.bl3hotfix", {{basic_mod_hotfix}, {}, {}, {}}},
+        {"nested_exec.bl3hotfix", {{basic_mod_hotfix}, {}, {}, {}}},
+        {"multi_exec.bl3hotfix",
+         {{basic_mod_hotfix, unicode_statement_hotfix, sliding_hotfix}, {}, {}, {}}},
+        {"multi_exec.URL", {{sliding_hotfix}, {}, {}, {}}},
+        {"news.bl3hotfix", {{}, {}, {}, {{L"My News Item", L"", L"https://example.com"}}}},
+    };
+
+    auto original_mod_dir = mod_dir;
+    mod_dir = std::filesystem::path("tests");
+
+    std::string filename;
+    mod_data expected_data;
+
+    std::for_each(PARAMETERIZED_CASES.begin(), PARAMETERIZED_CASES.end(), [&](const auto& in) {
+        SUBCASE(in.first.c_str()) {
+            filename = in.first;
+            expected_data = in.second;
+        }
+    });
+
+    known_mod_files.clear();
+
+    mod_file_local file{mod_dir / filename};
+    file.load();
+
+    mod_data data;
+    file.append_to(data);
+
+    CHECK(ITERABLE_EQUAL(data.hotfixes, expected_data.hotfixes));
+    CHECK(ITERABLE_EQUAL(data.type_11_hotfixes, expected_data.type_11_hotfixes));
+    CHECK(ITERABLE_EQUAL(data.type_11_maps, expected_data.type_11_maps));
+    CHECK(ITERABLE_EQUAL(data.news_items, expected_data.news_items));
+
+    mod_dir = original_mod_dir;
 }
 
 #pragma endregion

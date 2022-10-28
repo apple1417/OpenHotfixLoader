@@ -65,6 +65,9 @@ if(MSVC)
 
     target_compile_options(ohl_root PUBLIC "$<$<CONFIG:DEBUG>:/ZI>")
     target_link_options(ohl_root PUBLIC "/INCREMENTAL")
+
+    # UTF-8 encoded source files
+    target_compile_options(ohl_root PUBLIC "/utf-8")
 endif()
 
 if (MINGW)

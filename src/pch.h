@@ -60,3 +60,10 @@ using std::uint8_t;
  * @param B The second iterable.
  */
 #define ITERABLE_EQUAL(A, B) std::equal((A).begin(), (A).end(), (B).begin(), (B).end())
+
+/**
+ * @brief The github URLs for the OHL project.
+ * @note The raw url includes `/master/`.
+ */
+#define OHL_GITHUB_URL "https://github.com/apple1417/OpenHotfixLoader/"
+#define OHL_GITHUB_RAW_URL "https://raw.githubusercontent.com/apple1417/OpenHotfixLoader/master/"
