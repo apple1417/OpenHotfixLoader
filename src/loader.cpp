@@ -1134,6 +1134,25 @@ static news_item get_ohl_news_item(size_t hotfix_count,
     return {header, OHL_NEWS_ITEM_IMAGE_URL, OHL_NEWS_ITEM_ARTICLE_URL, body};
 }
 
+TEST_CASE("loader::get_ohl_news_item") {
+    auto empty_news = get_ohl_news_item(0, {});
+    CHECK(empty_news.header == L"OHL " VERSION_STRING ": No hotfixes loaded");
+    CHECK(empty_news.image_url == OHL_NEWS_ITEM_IMAGE_URL);
+    CHECK(empty_news.article_url == OHL_NEWS_ITEM_ARTICLE_URL);
+    CHECK(empty_news.body == L"No hotfixes loaded");
+
+    auto one_news = get_ohl_news_item(1, {});
+    CHECK(one_news.header == L"OHL " VERSION_STRING ": 1 hotfix loaded");
+    CHECK(one_news.image_url == OHL_NEWS_ITEM_IMAGE_URL);
+    CHECK(one_news.article_url == OHL_NEWS_ITEM_ARTICLE_URL);
+    // Going to leave body formatting indeterminate for >0
+
+    auto multi_news = get_ohl_news_item(1234, {});
+    CHECK(multi_news.header == L"OHL " VERSION_STRING ": 1234 hotfixes loaded");
+    CHECK(multi_news.image_url == OHL_NEWS_ITEM_IMAGE_URL);
+    CHECK(multi_news.article_url == OHL_NEWS_ITEM_ARTICLE_URL);
+}
+
 #pragma region Public interface
 
 static std::mutex reloading_mutex;
@@ -1246,6 +1265,103 @@ std::deque<news_item> get_news_items(void) {
     std::lock_guard<std::mutex> lock(reloading_mutex);
 
     return loaded_mod_data.news_items;
+}
+
+TEST_CASE("loader integration") {
+    const std::vector<hotfix> expected_hotfixes{
+        // Type 11s
+        {L"SparkEarlyLevelPatchEntry",
+         L"(1,11,0,Wetlands_P),/Game/Maps/Zone_2/Wetlands,/Game/InteractiveObjects/Switches/"
+         L"Lever/"
+         L"Design,IO_Switch_Industrial_Prison,80,\"0.000000,0.000000,0.000000|0.000000,0.000000,"
+         L"0."
+         L"000000|1.000000,1.000000,1.000000\""},
+
+        // Type 11 Delays
+        {L"SparkEarlyLevelPatchEntry",
+         L"(1,1,0,Wetlands_P),/Game/Pickups/Ammo/"
+         L"BPAmmoItem_Pistol.Default__BPAmmoItem_Pistol_C,ItemMeshComponent.Object..StaticMesh,0,,"
+         L"StaticMesh'\"/Engine/EditorMeshes/Camera/SM_CraneRig_Arm.SM_CraneRig_Arm\"'"},
+        {L"SparkEarlyLevelPatchEntry",
+         L"(1,1,0,Wetlands_P),/Game/Pickups/Ammo/"
+         L"BPAmmoItem_Pistol.Default__BPAmmoItem_Pistol_C,ItemMeshComponent.Object..StaticMesh,0,,"
+         L"StaticMesh'\"/Engine/EditorMeshes/Camera/SM_CraneRig_Base.SM_CraneRig_Base\"'"},
+        {L"SparkEarlyLevelPatchEntry",
+         L"(1,1,0,Wetlands_P),/Game/Pickups/Ammo/"
+         L"BPAmmoItem_Pistol.Default__BPAmmoItem_Pistol_C,ItemMeshComponent.Object..StaticMesh,0,,"
+         L"StaticMesh'\"/Engine/EditorMeshes/Camera/SM_CraneRig_Body.SM_CraneRig_Body\"'"},
+        {L"SparkEarlyLevelPatchEntry",
+         L"(1,1,0,Wetlands_P),/Game/Pickups/Ammo/"
+         L"BPAmmoItem_Pistol.Default__BPAmmoItem_Pistol_C,ItemMeshComponent.Object..StaticMesh,0,,"
+         L"StaticMesh'\"/Engine/EditorMeshes/Camera/SM_CraneRig_Mount.SM_CraneRig_Mount\"'"},
+        {L"SparkEarlyLevelPatchEntry",
+         L"(1,1,0,Wetlands_P),/Game/Pickups/Ammo/"
+         L"BPAmmoItem_Pistol.Default__BPAmmoItem_Pistol_C,ItemMeshComponent.Object..StaticMesh,0,,"
+         L"StaticMesh'\"/Engine/EditorMeshes/Camera/SM_RailRig_Mount.SM_RailRig_Mount\"'"},
+        {L"SparkEarlyLevelPatchEntry",
+         L"(1,1,0,Wetlands_P),/Game/Pickups/Ammo/"
+         L"BPAmmoItem_Pistol.Default__BPAmmoItem_Pistol_C,ItemMeshComponent.Object..StaticMesh,0,,"
+         L"StaticMesh'\"/Engine/EditorMeshes/Camera/SM_RailRig_Track.SM_RailRig_Track\"'"},
+        {L"SparkEarlyLevelPatchEntry",
+         L"(1,1,0,Wetlands_P),/Game/Pickups/Ammo/"
+         L"BPAmmoItem_Pistol.Default__BPAmmoItem_Pistol_C,ItemMeshComponent.Object..StaticMesh,0,,"
+         L"StaticMesh'\"/Game/Pickups/Ammo/Model/Meshes/SM_ammo_pistol.SM_ammo_pistol\"'"},
+
+        // Regular hotfixes
+        {L"SparkPatchEntry",
+         (wchar_t*)u"(1,1,0,),/Game/PatchDLC/Raid1/Gear/Weapons/Link/"
+                   u"Name_MAL_SM_Link.Name_MAL_SM_Link,PartName,0,,Cú Chulainn"},
+
+        {L"SparkEarlyLevelPatchEntry",
+         L"(1,1,1,Wetlands_P),/Game/Maps/Zone_2/Wetlands/"
+         L"Wetlands_P.Wetlands_P:PersistentLevel.IO_Switch_Industrial_Prison_C_0."
+         L"DefaultSceneRoot,"
+         L"RelativeLocation,0,,(X=34927.000000,Y=10709.000000,Z=3139.000000)"},
+        {L"SparkEarlyLevelPatchEntry",
+         L"(1,1,1,Wetlands_P),/Game/Maps/Zone_2/Wetlands/"
+         L"Wetlands_P.Wetlands_P:PersistentLevel.IO_Switch_Industrial_Prison_C_0."
+         L"DefaultSceneRoot,"
+         L"RelativeRotation,0,,(Pitch=0.000000,Yaw=67.716370,Roll=0.000000)"},
+        {L"SparkEarlyLevelPatchEntry",
+         L"(1,1,1,Wetlands_P),/Game/Maps/Zone_2/Wetlands/"
+         L"Wetlands_P.Wetlands_P:PersistentLevel.IO_Switch_Industrial_Prison_C_0."
+         L"DefaultSceneRoot,"
+         L"RelativeScale3D,0,,(X=1.000000,Y=1.000000,Z=1.000000)"},
+        {L"SparkLevelPatchEntry",
+         L"(1,1,0,Wetlands_P),/Game/Maps/Zone_2/Wetlands/"
+         L"Wetlands_P.Wetlands_P:PersistentLevel.IO_Switch_Industrial_Prison_C_0,On_SwitchUsed,"
+         L"0,,("
+         L"Wetlands_M_EP12JakobsRebellion_C_11.BndEvt__IO_Switch_Circuit_Breaker_V_2_K2Node_"
+         L"ActorBoundEvent_0_On_SwitchUsed__DelegateSignature)"},
+        {L"SparkLevelPatchEntry",
+         L"(1,1,0,Wetlands_P),/Game/Maps/Zone_2/Wetlands/"
+         L"Wetlands_P.Wetlands_P:PersistentLevel.IO_Switch_Industrial_Prison_C_0,"
+         L"SingleActivation,"
+         L"0,,False"},
+
+    };
+    const std::vector<news_item> expected_news_items{
+        {L"My News Item", L"", L"https://example.com"},
+    };
+
+    auto original_mod_dir = mod_dir;
+    mod_dir = std::filesystem::path("tests") / "mods_dir";
+
+    reload();
+    auto hotfixes = get_hotfixes();
+    auto news_items = get_news_items();
+
+    news_item ohl_news = news_items[0];
+    news_items.pop_front();
+
+    CHECK(ohl_news.header == L"OHL " VERSION_STRING ": 14 hotfixes loaded");
+    CHECK(ohl_news.image_url == OHL_NEWS_ITEM_IMAGE_URL);
+    CHECK(ohl_news.article_url == OHL_NEWS_ITEM_ARTICLE_URL);
+
+    CHECK(ITERABLE_EQUAL(hotfixes, expected_hotfixes));
+    CHECK(ITERABLE_EQUAL(news_items, expected_news_items));
+
+    mod_dir = original_mod_dir;
 }
 
 #pragma endregion
