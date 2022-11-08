@@ -126,7 +126,7 @@ std::string unescape_url(const std::string& url, bool extra_info) {
     }
 
     auto r = UrlUnescapeA(const_cast<char*>(url.c_str()), unescaped, &len,
-                 (extra_info ? 0 : URL_DONT_UNESCAPE_EXTRA_INFO));
+                          (extra_info ? 0 : URL_DONT_UNESCAPE_EXTRA_INFO));
 
     std::string ret{unescaped};
     free(unescaped);

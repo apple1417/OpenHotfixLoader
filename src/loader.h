@@ -11,8 +11,7 @@ struct hotfix {
     std::string key;
     std::string value;
 
-    hotfix(const std::string& key = "", const std::string& value = "")
-        : key(key), value(value) {}
+    hotfix(const std::string& key = "", const std::string& value = "") : key(key), value(value) {}
 
     bool operator==(const hotfix& rhs) const {
         return this->key == rhs.key && this->value == rhs.value;

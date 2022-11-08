@@ -16,10 +16,10 @@
 
 #include <array>
 #include <atomic>
+#include <cctype>
 #include <codecvt>
 #include <cstdint>
 #include <cwchar>
-#include <cctype>
 #include <deque>
 #include <filesystem>
 #include <fstream>

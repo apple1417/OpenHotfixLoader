@@ -59,7 +59,7 @@ static_assert(sizeof(*KNOWN_OBJECT_PATTERNS) == sizeof(FJsonObject::pattern));
  *
  * @param discovery_json The json object received by the discovery hook.
  */
-static void gather_vf_tables(FJsonObject* discovery_json) {
+static void gather_vf_tables(const FJsonObject* discovery_json) {
     if (vf_table.found) {
         return;
     }
@@ -106,10 +106,11 @@ static void add_ref_controller(TSharedPtr<T>* ptr, void* vf_table) {
  * @param value The value to set.
  */
 static void alloc_string(FString* str, const std::string& value) {
-    str->count = value.size() + 1;
+    auto wide = ohl::util::widen(value);
+    str->count = wide.size() + 1;
     str->max = str->count;
     str->data = ohl::hooks::malloc<wchar_t>(str->count * sizeof(wchar_t));
-    wcsncpy(str->data, ohl::util::widen(value).c_str(), str->count - 1);
+    wcsncpy(str->data, wide.c_str(), str->count - 1);
     str->data[str->count - 1] = '\0';
 }
 
@@ -119,7 +120,7 @@ static void alloc_string(FString* str, const std::string& value) {
  * @param value The value of the string.
  * @return A pointer to the new object.
  */
-static FJsonValueString* create_json_string(std::string value) {
+static FJsonValueString* create_json_string(const std::string& value) {
     auto obj = ohl::hooks::malloc<FJsonValueString>(sizeof(FJsonValueString));
     obj->vf_table = vf_table.json_value_string;
     obj->type = EJson::String;
@@ -136,7 +137,8 @@ static FJsonValueString* create_json_string(std::string value) {
  * @return A pointer to the new object.
  */
 template <size_t n>
-static FJsonObject* create_json_object(std::array<std::pair<std::string, FJsonValue*>, n> entries) {
+static FJsonObject* create_json_object(
+    const std::array<std::pair<std::string, FJsonValue*>, n>& entries) {
     static_assert(0 < n && n <= ARRAYSIZE(KNOWN_OBJECT_PATTERNS));
 
     auto obj = ohl::hooks::malloc<FJsonObject>(sizeof(FJsonObject));
@@ -164,7 +166,7 @@ static FJsonObject* create_json_object(std::array<std::pair<std::string, FJsonVa
  * @param entries The entries in the array.
  * @return A pointer to the new object
  */
-static FJsonValueArray* create_json_array(std::vector<FJsonValue*> entries) {
+static FJsonValueArray* create_json_array(const std::vector<FJsonValue*>& entries) {
     auto obj = ohl::hooks::malloc<FJsonValueArray>(sizeof(FJsonValueArray));
     obj->vf_table = vf_table.json_value_array;
     obj->type = EJson::Array;
@@ -190,12 +192,12 @@ static FJsonValueArray* create_json_array(std::vector<FJsonValue*> entries) {
  * @param obj The object to create a value object of.
  * @return A pointer to the new value object.
  */
-static FJsonValueObject* create_json_value_object(FJsonObject* obj) {
+static FJsonValueObject* create_json_value_object(const FJsonObject* obj) {
     auto val_obj = ohl::hooks::malloc<FJsonValueObject>(sizeof(FJsonValueObject));
     val_obj->vf_table = vf_table.json_value_object;
     val_obj->type = EJson::Object;
 
-    val_obj->value.obj = obj;
+    val_obj->value.obj = const_cast<FJsonObject*>(obj);
     add_ref_controller(&val_obj->value, vf_table.shared_ptr_json_object);
 
     return val_obj;

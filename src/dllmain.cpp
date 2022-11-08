@@ -4,6 +4,7 @@
 #include "hooks.h"
 #include "loader.h"
 #include "processing.h"
+#include "version.h"
 
 static const std::string LOG_FILE_NAME = "OpenHotfixLoader.log";
 
@@ -26,6 +27,7 @@ static int32_t startup_thread(void*) {
                    ohl::args::dll_path().replace_filename(LOG_FILE_NAME).c_str())
             .addAppender(&consoleAppender);
 
+        LOGI << "[OHL] Launched " VERSION_STRING;
 #ifdef DEBUG
         LOGD << "[OHL] Running debug build";
 #endif
