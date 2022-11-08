@@ -19,9 +19,9 @@ static args_t args = {false, false, "", ""};
  *
  * @param cmd The command line args.
  */
-static void parse(std::wstring cmd) {
-    args.debug = cmd.find(L"--ohl-debug") != std::string::npos;
-    args.dump_hotfixes = cmd.find(L"--dump-hotfixes") != std::string::npos;
+static void parse(std::string cmd) {
+    args.debug = cmd.find("--ohl-debug") != std::string::npos;
+    args.dump_hotfixes = cmd.find("--dump-hotfixes") != std::string::npos;
 }
 
 TEST_CASE("args::parse_str") {
@@ -29,47 +29,47 @@ TEST_CASE("args::parse_str") {
     args.dump_hotfixes = false;
 
     SUBCASE("debug") {
-        parse(L"example.exe");
+        parse("example.exe");
         REQUIRE(args.debug == false);
 
-        parse(L"example.exe --debug");
+        parse("example.exe --debug");
         REQUIRE(args.debug == false);
 
-        parse(L"example.exe --dump-hotfixes");
+        parse("example.exe --dump-hotfixes");
         REQUIRE(args.debug == false);
 
-        parse(L"example.exe --ohl-debug");
+        parse("example.exe --ohl-debug");
         REQUIRE(args.debug == true);
     }
 
     SUBCASE("dump") {
-        parse(L"example.exe");
+        parse("example.exe");
         REQUIRE(args.dump_hotfixes == false);
 
-        parse(L"example.exe --dump-hotfixes");
+        parse("example.exe --dump-hotfixes");
         REQUIRE(args.dump_hotfixes == true);
     }
 
     SUBCASE("debug + dump") {
-        parse(L"example.exe");
+        parse("example.exe");
         REQUIRE(args.debug == false);
         REQUIRE(args.dump_hotfixes == false);
 
-        parse(L"example.exe --ohl-debug --dump-hotfixes");
+        parse("example.exe --ohl-debug --dump-hotfixes");
         REQUIRE(args.debug == true);
         REQUIRE(args.dump_hotfixes == true);
     }
 }
 
 void init(HMODULE this_module) {
-    parse(GetCommandLine());
+    parse(GetCommandLineA());
 
-    wchar_t buf[FILENAME_MAX];
-    if (GetModuleFileName(NULL, buf, sizeof(buf))) {
-        args.exe_path = std::filesystem::path(std::wstring(buf));
+    char buf[FILENAME_MAX];
+    if (GetModuleFileNameA(NULL, buf, sizeof(buf))) {
+        args.exe_path = std::filesystem::path(buf);
     }
-    if (GetModuleFileName(this_module, buf, sizeof(buf))) {
-        args.dll_path = std::filesystem::path(std::wstring(buf));
+    if (GetModuleFileNameA(this_module, buf, sizeof(buf))) {
+        args.dll_path = std::filesystem::path(buf);
     }
 }
 

@@ -117,28 +117,32 @@ TEST_CASE("utils::get_sorted_files_in_dir") {
     CHECK(get_sorted_files_in_dir(dir) == expected);
 }
 
-std::wstring unescape_url(const std::wstring& url, bool extra_info) {
-    wchar_t* unescaped = reinterpret_cast<wchar_t*>(malloc((url.size() + 1) * sizeof(wchar_t)));
+std::string unescape_url(const std::string& url, bool extra_info) {
+    DWORD len = (url.size() + 1) * sizeof(char);
 
-    DWORD len = url.size() * 2;
-    UrlUnescapeW(const_cast<wchar_t*>(url.c_str()), unescaped, &len,
-                 URL_UNESCAPE_AS_UTF8 | (extra_info ? 0 : URL_DONT_UNESCAPE_EXTRA_INFO));
+    char* unescaped = reinterpret_cast<char*>(malloc(len));
+    if (!unescaped) {
+        throw std::runtime_error("Failed to unescape url!");
+    }
 
-    std::wstring ret{unescaped};
+    auto r = UrlUnescapeA(const_cast<char*>(url.c_str()), unescaped, &len,
+                 (extra_info ? 0 : URL_DONT_UNESCAPE_EXTRA_INFO));
+
+    std::string ret{unescaped};
     free(unescaped);
 
     return ret;
 }
 
 TEST_CASE("utils::unescape_url") {
-    CHECK(unescape_url(L"https://example.com", false) == L"https://example.com");
-    CHECK(unescape_url(L"https://example.com#test", false) == L"https://example.com#test");
-    CHECK(unescape_url(L"https://exa%6Dple%2ecom", false) == L"https://example.com");
-    CHECK(unescape_url(L"https://exa%6Dple%2ecom?test", false) == L"https://example.com?test");
-    CHECK(unescape_url(L"https://exa%6Dple%2ecom#test", false) == L"https://example.com#test");
-    CHECK(unescape_url(L"https://exa%6Dple%2ecom#t%65st", false) == L"https://example.com#t%65st");
-    CHECK(unescape_url(L"https://exa%6Dple%2ecom#t%65st", true) == L"https://example.com#test");
-    CHECK(unescape_url(L"https://exa%6Dple%2ecom%23t%65st", true) == L"https://example.com#test");
+    CHECK(unescape_url("https://example.com", false) == "https://example.com");
+    CHECK(unescape_url("https://example.com#test", false) == "https://example.com#test");
+    CHECK(unescape_url("https://exa%6Dple%2ecom", false) == "https://example.com");
+    CHECK(unescape_url("https://exa%6Dple%2ecom?test", false) == "https://example.com?test");
+    CHECK(unescape_url("https://exa%6Dple%2ecom#test", false) == "https://example.com#test");
+    CHECK(unescape_url("https://exa%6Dple%2ecom#t%65st", false) == "https://example.com#t%65st");
+    CHECK(unescape_url("https://exa%6Dple%2ecom#t%65st", true) == "https://example.com#test");
+    CHECK(unescape_url("https://exa%6Dple%2ecom%23t%65st", true) == "https://example.com#test");
 }
 
 TEST_SUITE_END();

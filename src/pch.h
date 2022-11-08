@@ -19,7 +19,7 @@
 #include <codecvt>
 #include <cstdint>
 #include <cwchar>
-#include <cwctype>
+#include <cctype>
 #include <deque>
 #include <filesystem>
 #include <fstream>

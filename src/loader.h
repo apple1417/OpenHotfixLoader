@@ -8,10 +8,10 @@ namespace ohl::loader {
  * @brief Struct representing a single hotfix entry.
  */
 struct hotfix {
-    std::wstring key;
-    std::wstring value;
+    std::string key;
+    std::string value;
 
-    hotfix(const std::wstring& key = L"", const std::wstring& value = L"")
+    hotfix(const std::string& key = "", const std::string& value = "")
         : key(key), value(value) {}
 
     bool operator==(const hotfix& rhs) const {
@@ -24,15 +24,15 @@ struct hotfix {
  * @brief Struct representing a single injected news item. *
  */
 struct news_item {
-    std::wstring header;
-    std::wstring image_url;
-    std::wstring article_url;
-    std::wstring body;
+    std::string header;
+    std::string image_url;
+    std::string article_url;
+    std::string body;
 
-    news_item(const std::wstring& header = L"",
-              const std::wstring& image_url = L"",
-              const std::wstring& article_url = L"",
-              const std::wstring& body = L"")
+    news_item(const std::string& header = "",
+              const std::string& image_url = "",
+              const std::string& article_url = "",
+              const std::string& body = "")
         : header(header), image_url(image_url), article_url(article_url), body(body) {}
 
     bool operator==(const news_item& rhs) const {

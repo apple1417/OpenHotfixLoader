@@ -7,7 +7,7 @@
 #include "util.h"
 #include "version.h"
 
-using mod_file_identifier = std::wstring;
+using mod_file_identifier = std::string;
 
 namespace ohl::loader {
 TEST_SUITE_BEGIN("loader");
@@ -16,31 +16,31 @@ TEST_SUITE_BEGIN("loader");
 
 class mod_file;
 
-static const std::wstring WHITESPACE = L" \f\n\r\t\b";
+static const std::string WHITESPACE = " \f\n\r\t\b";
 
-static const std::wstring HOTFIX_COMMAND = L"spark";
-static const std::wstring NEWS_COMMAND = L"injectnewsitem";
-static const std::wstring EXEC_COMMAND = L"exec";
-static const std::wstring URL_COMMAND = L"url=";
+static const std::string HOTFIX_COMMAND = "spark";
+static const std::string NEWS_COMMAND = "injectnewsitem";
+static const std::string EXEC_COMMAND = "exec";
+static const std::string URL_COMMAND = "url=";
 
-static const std::wstring TYPE_11_DELAY_TYPE = L"SparkEarlyLevelPatchEntry";
-static const std::wstring TYPE_11_DELAY_VALUE =
-    L"(1,1,0,{map}),/Game/Pickups/Ammo/"
-    L"BPAmmoItem_Pistol.Default__BPAmmoItem_Pistol_C,ItemMeshComponent.Object..StaticMesh,0,,"
-    L"StaticMesh'\"{mesh}\"'";
-static const std::vector<std::wstring> TYPE_11_DELAY_MESHES = {
-    L"/Engine/EditorMeshes/Camera/SM_CraneRig_Arm.SM_CraneRig_Arm",
-    L"/Engine/EditorMeshes/Camera/SM_CraneRig_Base.SM_CraneRig_Base",
-    L"/Engine/EditorMeshes/Camera/SM_CraneRig_Body.SM_CraneRig_Body",
-    L"/Engine/EditorMeshes/Camera/SM_CraneRig_Mount.SM_CraneRig_Mount",
-    L"/Engine/EditorMeshes/Camera/SM_RailRig_Mount.SM_RailRig_Mount",
-    L"/Engine/EditorMeshes/Camera/SM_RailRig_Track.SM_RailRig_Track",
-    L"/Game/Pickups/Ammo/Model/Meshes/SM_ammo_pistol.SM_ammo_pistol",
+static const std::string TYPE_11_DELAY_TYPE = "SparkEarlyLevelPatchEntry";
+static const std::string TYPE_11_DELAY_VALUE =
+    "(1,1,0,{map}),/Game/Pickups/Ammo/"
+    "BPAmmoItem_Pistol.Default__BPAmmoItem_Pistol_C,ItemMeshComponent.Object..StaticMesh,0,,"
+    "StaticMesh'\"{mesh}\"'";
+static const std::vector<std::string> TYPE_11_DELAY_MESHES = {
+    "/Engine/EditorMeshes/Camera/SM_CraneRig_Arm.SM_CraneRig_Arm",
+    "/Engine/EditorMeshes/Camera/SM_CraneRig_Base.SM_CraneRig_Base",
+    "/Engine/EditorMeshes/Camera/SM_CraneRig_Body.SM_CraneRig_Body",
+    "/Engine/EditorMeshes/Camera/SM_CraneRig_Mount.SM_CraneRig_Mount",
+    "/Engine/EditorMeshes/Camera/SM_RailRig_Mount.SM_RailRig_Mount",
+    "/Engine/EditorMeshes/Camera/SM_RailRig_Track.SM_RailRig_Track",
+    "/Game/Pickups/Ammo/Model/Meshes/SM_ammo_pistol.SM_ammo_pistol",
 };
 
-static const std::wstring OHL_NEWS_ITEM_IMAGE_URL = L"" OHL_GITHUB_RAW_URL "news_icon.png";
+static const std::string OHL_NEWS_ITEM_IMAGE_URL = OHL_GITHUB_RAW_URL "news_icon.png";
 
-static const std::wstring OHL_NEWS_ITEM_ARTICLE_URL = L"" OHL_GITHUB_URL "releases";
+static const std::string OHL_NEWS_ITEM_ARTICLE_URL = OHL_GITHUB_URL "releases";
 
 #pragma endregion
 
@@ -59,7 +59,7 @@ class mod_data {
    public:
     std::deque<hotfix> hotfixes{};
     std::vector<hotfix> type_11_hotfixes{};
-    std::unordered_set<std::wstring> type_11_maps{};
+    std::unordered_set<std::string> type_11_maps{};
     std::deque<news_item> news_items{};
 
     /**
@@ -88,26 +88,26 @@ class mod_data {
 };
 
 TEST_CASE("loader::mod_data::append_to") {
-    const mod_data data_a{{{L"SparkPatchEntry", L"(1,1,0,),/Some/Hotfix/Here"},
-                           {L"SparkPatchEntry", L"(1,1,0,),/Another/Hotfix/"}},
-                          {{L"SparkEarlyLevelPatchEntry", L"(1,11,0,SomeMap_P)"}},
-                          {L"SomeMap_P"},
-                          {{L"header", L"image", L"article", L"body"}}};
+    const mod_data data_a{{{"SparkPatchEntry", "(1,1,0,),/Some/Hotfix/Here"},
+                           {"SparkPatchEntry", "(1,1,0,),/Another/Hotfix/"}},
+                          {{"SparkEarlyLevelPatchEntry", "(1,11,0,SomeMap_P)"}},
+                          {"SomeMap_P"},
+                          {{"header", "image", "article", "body"}}};
 
-    const mod_data data_b{{{L"Key", L"Value"}}, {}, {}, {}};
+    const mod_data data_b{{{"Key", "Value"}}, {}, {}, {}};
 
     const mod_data data_empty{};
 
     const std::deque<hotfix> expected_a_append_to_b_hotfixes = {
-        {L"Key", L"Value"},
-        {L"SparkPatchEntry", L"(1,1,0,),/Some/Hotfix/Here"},
-        {L"SparkPatchEntry", L"(1,1,0,),/Another/Hotfix/"},
+        {"Key", "Value"},
+        {"SparkPatchEntry", "(1,1,0,),/Some/Hotfix/Here"},
+        {"SparkPatchEntry", "(1,1,0,),/Another/Hotfix/"},
     };
 
     const std::deque<hotfix> expected_b_append_to_a_hotfixes = {
-        {L"SparkPatchEntry", L"(1,1,0,),/Some/Hotfix/Here"},
-        {L"SparkPatchEntry", L"(1,1,0,),/Another/Hotfix/"},
-        {L"Key", L"Value"},
+        {"SparkPatchEntry", "(1,1,0,),/Some/Hotfix/Here"},
+        {"SparkPatchEntry", "(1,1,0,),/Another/Hotfix/"},
+        {"Key", "Value"},
     };
 
     SUBCASE("against empty") {
@@ -153,7 +153,7 @@ TEST_CASE("loader::mod_data::is_empty") {
     data_type_11_hotfix.type_11_hotfixes.emplace_back();
 
     mod_data data_type_11_map{};
-    data_type_11_map.type_11_maps.insert(L"");
+    data_type_11_map.type_11_maps.insert("");
 
     mod_data data_news{};
     data_news.news_items.emplace_back();
@@ -271,7 +271,7 @@ class mod_file {
      *
      * @return The mod's display name.
      */
-    virtual std::wstring get_display_name(void) const = 0;
+    virtual std::string get_display_name(void) const = 0;
 
     /**
      * @brief Attempts to load the contents of this mod file.
@@ -294,13 +294,13 @@ class mod_file_local : public mod_file {
 
     mod_file_local(const std::filesystem::path& path) : path(path) {}
 
-    virtual mod_file_identifier get_identifier(void) const { return this->path.wstring(); }
+    virtual mod_file_identifier get_identifier(void) const { return this->path.string(); }
 
-    virtual std::wstring get_display_name(void) const {
+    virtual std::string get_display_name(void) const {
         if (this->path.parent_path() == mod_dir) {
-            return this->path.filename().wstring();
+            return this->path.filename().string();
         } else {
-            return this->path.wstring();
+            return this->path.string();
         }
     }
 
@@ -311,19 +311,19 @@ class mod_file_local : public mod_file {
         // Use an empty subcase to make sure we restore the mod dir if this fails
         SUBCASE("") {
             CHECK(mod_file_local{mod_dir / "mod_file.bl3hotfix"}.get_display_name()
-                  == L"mod_file.bl3hotfix");
+                  == "mod_file.bl3hotfix");
 
             CHECK(mod_file_local{mod_dir / "nested_folder" / "mod_in_nested.txt"}.get_display_name()
-                  == L"tests\\nested_folder\\mod_in_nested.txt");
+                  == "tests\\nested_folder\\mod_in_nested.txt");
 
             CHECK(mod_file_local{mod_dir / "mod_without_extension"}.get_display_name()
-                  == L"mod_without_extension");
+                  == "mod_without_extension");
 
             CHECK(mod_file_local{mod_dir / "mod.with.multiple.dots.txt"}.get_display_name()
-                  == L"mod.with.multiple.dots.txt");
+                  == "mod.with.multiple.dots.txt");
 
             CHECK(mod_file_local{mod_dir / ".mod- !#with ()'symbols;'+ .txt"}.get_display_name()
-                  == L".mod- !#with ()'symbols;'+ .txt");
+                  == ".mod- !#with ()'symbols;'+ .txt");
         }
 
         mod_dir = original_mod_dir;
@@ -350,11 +350,10 @@ class mod_file_local : public mod_file {
                   "BPCine_Actor_Typhon.BPCine_Actor_Typhon_C:SkeletalMesh_GEN_VARIABLE,"
                   "bEnableUpdateRateOptimizations,4,True,False\n";
 
-        const hotfix expected_hotfix{
-            L"SparkLevelPatchEntry",
-            L"(1,1,1,Crypt_P),/Game/Cinematics/_Design/NPCs/"
-            "BPCine_Actor_Typhon.BPCine_Actor_Typhon_C:SkeletalMesh_GEN_VARIABLE,"
-            "bEnableUpdateRateOptimizations,4,True,False"};
+        const hotfix expected_hotfix{"SparkLevelPatchEntry",
+                                     "(1,1,1,Crypt_P),/Game/Cinematics/_Design/NPCs/"
+                                     "BPCine_Actor_Typhon.BPCine_Actor_Typhon_C:SkeletalMesh_GEN_"
+                                     "VARIABLE,bEnableUpdateRateOptimizations,4,True,False"};
 
         local_file.load();
         local_file.join();
@@ -442,12 +441,12 @@ TEST_CASE("loader::mod_file::append_to") {
     auto file_data = std::get<mod_data>(file.sections[0]);
 
     mod_data empty_data{};
-    mod_data filled_data{{{L"Key", L"Value"}}, {}, {}, {}};
+    mod_data filled_data{{{"Key", "Value"}}, {}, {}, {}};
 
     const std::vector<hotfix> expected_append_to_filled_hotfixes = {
-        {L"Key", L"Value"},
-        {L"SparkLevelPatchEntry",
-         L"(1,1,1,Crypt_P),/Game/Cinematics/_Design/NPCs/"
+        {"Key", "Value"},
+        {"SparkLevelPatchEntry",
+         "(1,1,1,Crypt_P),/Game/Cinematics/_Design/NPCs/"
          "BPCine_Actor_Typhon.BPCine_Actor_Typhon_C:SkeletalMesh_GEN_VARIABLE,"
          "bEnableUpdateRateOptimizations,4,True,False"}};
 
@@ -478,39 +477,39 @@ class mod_file_url : public mod_file {
     std::future<void> download;
 
    public:
-    const std::wstring url;
+    const std::string url;
 
-    mod_file_url(const std::wstring& url) : url(url) {}
+    mod_file_url(const std::string& url) : url(url) {}
 
     virtual mod_file_identifier get_identifier(void) const { return this->url; }
 
-    virtual std::wstring get_display_name(void) const {
+    virtual std::string get_display_name(void) const {
         if (this->url.find_last_of('/') == std::string::npos) {
             return this->url;
         } else {
             auto unescaped = ohl::util::unescape_url(this->url, false);
             auto name_start_pos = unescaped.find_last_of('/') + 1;
-            auto name_end_pos = unescaped.find_first_of(L"#?", name_start_pos);
+            auto name_end_pos = unescaped.find_first_of("#?", name_start_pos);
 
-            return unescaped.substr(name_start_pos, name_end_pos - name_start_pos) + L" (url)";
+            return unescaped.substr(name_start_pos, name_end_pos - name_start_pos) + " (url)";
         }
     }
 
     TEST_CASE_CLASS("loader::mod_file_url::get_display_name") {
-        CHECK(mod_file_url{L"https://example.com/mod.bl3hotfix"}.get_display_name()
-              == L"mod.bl3hotfix (url)");
+        CHECK(mod_file_url{"https://example.com/mod.bl3hotfix"}.get_display_name()
+              == "mod.bl3hotfix (url)");
 
-        CHECK(mod_file_url{L"https://example.com/nested/nested/mod.bl3hotfix"}.get_display_name()
-              == L"mod.bl3hotfix (url)");
+        CHECK(mod_file_url{"https://example.com/nested/nested/mod.bl3hotfix"}.get_display_name()
+              == "mod.bl3hotfix (url)");
 
-        CHECK(mod_file_url{L"https://exa%6Dple.com/%6Dy%20mod.bl3hotfix"}.get_display_name()
-              == L"my mod.bl3hotfix (url)");
+        CHECK(mod_file_url{"https://exa%6Dple.com/%6Dy%20mod.bl3hotfix"}.get_display_name()
+              == "my mod.bl3hotfix (url)");
 
-        CHECK(mod_file_url{L"https://example.com/mod.bl3hotfix?query=abc"}.get_display_name()
-              == L"mod.bl3hotfix (url)");
+        CHECK(mod_file_url{"https://example.com/mod.bl3hotfix?query=abc"}.get_display_name()
+              == "mod.bl3hotfix (url)");
 
-        CHECK(mod_file_url{L"https://example.com/mod.bl3hotfix#anchor"}.get_display_name()
-              == L"mod.bl3hotfix (url)");
+        CHECK(mod_file_url{"https://example.com/mod.bl3hotfix#anchor"}.get_display_name()
+              == "mod.bl3hotfix (url)");
     }
 
     virtual void load(void) {
@@ -532,14 +531,14 @@ class mod_file_url : public mod_file {
 
                 this->load_from_stream(stream, false);
             },
-            cpr::Url{ohl::util::narrow(this->url)},
+            cpr::Url{this->url},
             // An empty string tells libcurl to accept whatever encodings it can
             cpr::AcceptEncoding{{""}});
     };
 
-    TEST_CASE_CLASS("loader::mod_file_url::load - load_from_stream identical") {
-        mod_file_url url_file{L"" OHL_GITHUB_RAW_URL "tests/basic_mod.bl3hotfix"};
-        mod_file_url stream_file{L"dummy"};
+    TEST_CASE_CLASS("loader::mod_file_url::load - load_from_stream identica") {
+        mod_file_url url_file{OHL_GITHUB_RAW_URL "tests/basic_mod.bl3hotfix"};
+        mod_file_url stream_file{"dummy"};
 
         std::stringstream stream{};
         stream << "SparkLevelPatchEntry,(1,1,1,Crypt_P),/Game/Cinematics/_Design/NPCs/"
@@ -547,8 +546,8 @@ class mod_file_url : public mod_file {
                   "bEnableUpdateRateOptimizations,4,True,False\n";
 
         const hotfix expected_hotfix{
-            L"SparkLevelPatchEntry",
-            L"(1,1,1,Crypt_P),/Game/Cinematics/_Design/NPCs/"
+            "SparkLevelPatchEntry",
+            "(1,1,1,Crypt_P),/Game/Cinematics/_Design/NPCs/"
             "BPCine_Actor_Typhon.BPCine_Actor_Typhon_C:SkeletalMesh_GEN_VARIABLE,"
             "bEnableUpdateRateOptimizations,4,True,False"};
 
@@ -597,7 +596,7 @@ class mods_folder : public mod_file {
         throw std::runtime_error("Mods folder should not be treated as a mod file!");
     }
 
-    virtual std::wstring get_display_name(void) const {
+    virtual std::string get_display_name(void) const {
         throw std::runtime_error("Mods folder should not be treated as a mod file!");
     }
 
@@ -614,9 +613,9 @@ class mods_folder : public mod_file {
         mod_dir = std::filesystem::path("tests") / "sorted_files";
 
         const std::vector<mod_file_identifier> expected_identifiers = {
-            L"tests\\sorted_files\\1.txt",  L"tests\\sorted_files\\5.txt",
-            L"tests\\sorted_files\\10.txt", L"tests\\sorted_files\\a.txt",
-            L"tests\\sorted_files\\b.txt",  L"tests\\sorted_files\\c.txt",
+            "tests\\sorted_files\\1.txt",  "tests\\sorted_files\\5.txt",
+            "tests\\sorted_files\\10.txt", "tests\\sorted_files\\a.txt",
+            "tests\\sorted_files\\b.txt",  "tests\\sorted_files\\c.txt",
         };
 
         SUBCASE("") {
@@ -648,9 +647,9 @@ class mods_folder : public mod_file {
  * @param line The line to parse, without leading whitespace.
  * @param data The mod data object to append hotfixes to.
  */
-static void parse_and_append_hotfix_cmd(const std::wstring_view& line, mod_data& data) {
+static void parse_and_append_hotfix_cmd(const std::string_view& line, mod_data& data) {
     auto key_end_pos = line.find_first_of(',');
-    if (key_end_pos == std::wstring::npos) {
+    if (key_end_pos == std::string::npos) {
         return;
     }
 
@@ -662,14 +661,14 @@ static void parse_and_append_hotfix_cmd(const std::wstring_view& line, mod_data&
     // map_start_pos --------------------+      |
     // map_end_pos -----------------------------+
 
-    std::wstring key(line, 0, key_end_pos);
-    std::wstring value(line, key_end_pos + 1, std::string::npos);
+    std::string key(line, 0, key_end_pos);
+    std::string value(line, key_end_pos + 1, std::string::npos);
 
     // Check if it's a type 11, and extract the map
     auto type_start_pos = line.find_first_of(',', key_end_pos + 1) + 1;
     auto type_end_pos = line.find_first_of(',', type_start_pos + 1);
     if (type_end_pos != std::string::npos
-        && line.substr(type_start_pos, type_end_pos - type_start_pos) == L"11") {
+        && line.substr(type_start_pos, type_end_pos - type_start_pos) == "11") {
         auto map_start_pos = line.find_first_of(',', type_end_pos + 1) + 1;
         auto map_end_pos = line.find_first_of(')', map_start_pos);
         if (map_end_pos != std::string::npos) {
@@ -685,34 +684,34 @@ static void parse_and_append_hotfix_cmd(const std::wstring_view& line, mod_data&
 TEST_CASE("loader::parse_and_append_hotfix_cmd") {
     mod_data data;
 
-    parse_and_append_hotfix_cmd(L"Spark", data);
-    parse_and_append_hotfix_cmd(L"SparkLevelPatchEntry", data);
+    parse_and_append_hotfix_cmd("Spark", data);
+    parse_and_append_hotfix_cmd("SparkLevelPatchEntry", data);
     REQUIRE(data.is_empty());
 
-    parse_and_append_hotfix_cmd(L"Spark,", data);
+    parse_and_append_hotfix_cmd("Spark,", data);
     REQUIRE(data.hotfixes.size() == 1);
-    REQUIRE(data.hotfixes[0] == hotfix{L"Spark", L""});
+    REQUIRE(data.hotfixes[0] == hotfix{"Spark", ""});
 
-    parse_and_append_hotfix_cmd(L"Spark,abcde", data);
+    parse_and_append_hotfix_cmd("Spark,abcde", data);
     REQUIRE(data.hotfixes.size() == 2);
-    REQUIRE(data.hotfixes[1] == hotfix{L"Spark", L"abcde"});
+    REQUIRE(data.hotfixes[1] == hotfix{"Spark", "abcde"});
 
-    parse_and_append_hotfix_cmd(L"Spark,(1,111,1,NotA),Type11", data);
+    parse_and_append_hotfix_cmd("Spark,(1,111,1,NotA),Type11", data);
     REQUIRE(data.hotfixes.size() == 3);
-    REQUIRE(data.hotfixes[2] == hotfix{L"Spark", L"(1,111,1,NotA),Type11"});
+    REQUIRE(data.hotfixes[2] == hotfix{"Spark", "(1,111,1,NotA),Type11"});
 
     REQUIRE(data.type_11_hotfixes.empty());
     REQUIRE(data.type_11_maps.empty());
 
-    parse_and_append_hotfix_cmd(L"SparkLevelPatchEntry,(1,11,0,MapName),/Is/Actually.A,Type,11",
+    parse_and_append_hotfix_cmd("SparkLevelPatchEntry,(1,11,0,MapName),/Is/Actually.A,Type,11",
                                 data);
     REQUIRE(data.hotfixes.size() == 3);
     REQUIRE(data.type_11_hotfixes.size() == 1);
     REQUIRE(data.type_11_hotfixes[0]
-            == hotfix{L"SparkLevelPatchEntry", L"(1,11,0,MapName),/Is/Actually.A,Type,11"});
+            == hotfix{"SparkLevelPatchEntry", "(1,11,0,MapName),/Is/Actually.A,Type,11"});
 
     REQUIRE(data.type_11_maps.size() == 1);
-    REQUIRE(data.type_11_maps.count(L"MapName") == 1);
+    REQUIRE(data.type_11_maps.count("MapName") == 1);
 
     REQUIRE(data.news_items.size() == 0);
 }
@@ -724,15 +723,15 @@ TEST_CASE("loader::parse_and_append_hotfix_cmd") {
  * @param line A view of the current line. Will be modified to advance past the extracted field.
  * @return A new string containing the extracted/escaped field.
  */
-static std::wstring extract_csv_escaped(std::wstring_view& line) {
+static std::string extract_csv_escaped(std::string_view& line) {
     // If the field is not escaped, simple comma search + return
     // This will (deliberately) throw an out of range if the line is empty
     if (line[0] != '"') {
         auto comma_pos = line.find_first_of(',', 0);
-        std::wstring ret(line, 0, comma_pos);
+        std::string ret(line, 0, comma_pos);
 
         if (comma_pos == std::string::npos) {
-            line = L"";
+            line = "";
         } else {
             line = line.substr(comma_pos + 1);
         }
@@ -740,7 +739,7 @@ static std::wstring extract_csv_escaped(std::wstring_view& line) {
         return ret;
     }
 
-    std::wstringstream stream{};
+    std::stringstream stream{};
     auto quoted_start_pos = 1;
     auto quoted_end_pos = std::string::npos;
     while (true) {
@@ -764,7 +763,7 @@ static std::wstring extract_csv_escaped(std::wstring_view& line) {
 
     auto comma_pos = line.find_first_of(',', quoted_end_pos);
     if (comma_pos == std::string::npos) {
-        line = L"";
+        line = "";
     } else {
         line = line.substr(comma_pos + 1);
     }
@@ -773,25 +772,25 @@ static std::wstring extract_csv_escaped(std::wstring_view& line) {
 }
 
 TEST_CASE("loader::extract_csv_escaped") {
-    const std::wstring CSV_STRING = L"normal,,,\"quoted\",\"escaped,comma\",\"escaped\"\"quote\"";
-    std::wstring_view csv{CSV_STRING};
+    const std::string CSV_STRING = "normal,,,\"quoted\",\"escaped,comma\",\"escaped\"\"quote\"";
+    std::string_view csv{CSV_STRING};
 
-    CHECK(extract_csv_escaped(csv) == L"normal");
-    REQUIRE(csv == L",,\"quoted\",\"escaped,comma\",\"escaped\"\"quote\"");
+    CHECK(extract_csv_escaped(csv) == "normal");
+    REQUIRE(csv == ",,\"quoted\",\"escaped,comma\",\"escaped\"\"quote\"");
 
-    CHECK(extract_csv_escaped(csv) == L"");
-    REQUIRE(csv == L",\"quoted\",\"escaped,comma\",\"escaped\"\"quote\"");
-    CHECK(extract_csv_escaped(csv) == L"");
-    REQUIRE(csv == L"\"quoted\",\"escaped,comma\",\"escaped\"\"quote\"");
+    CHECK(extract_csv_escaped(csv) == "");
+    REQUIRE(csv == ",\"quoted\",\"escaped,comma\",\"escaped\"\"quote\"");
+    CHECK(extract_csv_escaped(csv) == "");
+    REQUIRE(csv == "\"quoted\",\"escaped,comma\",\"escaped\"\"quote\"");
 
-    CHECK(extract_csv_escaped(csv) == L"quoted");
-    REQUIRE(csv == L"\"escaped,comma\",\"escaped\"\"quote\"");
+    CHECK(extract_csv_escaped(csv) == "quoted");
+    REQUIRE(csv == "\"escaped,comma\",\"escaped\"\"quote\"");
 
-    CHECK(extract_csv_escaped(csv) == L"escaped,comma");
-    REQUIRE(csv == L"\"escaped\"\"quote\"");
+    CHECK(extract_csv_escaped(csv) == "escaped,comma");
+    REQUIRE(csv == "\"escaped\"\"quote\"");
 
-    CHECK(extract_csv_escaped(csv) == L"escaped\"quote");
-    REQUIRE(csv == L"");
+    CHECK(extract_csv_escaped(csv) == "escaped\"quote");
+    REQUIRE(csv == "");
 }
 
 /**
@@ -800,14 +799,14 @@ TEST_CASE("loader::extract_csv_escaped") {
  * @param line The line to parse, without leading whitespace.
  * @param data The mod data object to append hotfixes to.
  */
-static void parse_and_append_news_item_cmd(const std::wstring_view& line, mod_data& data) {
+static void parse_and_append_news_item_cmd(const std::string_view& line, mod_data& data) {
     auto cmd_end_pos = line.find_first_of(',');
     auto csv_view = line.substr(cmd_end_pos + 1);
 
-    std::wstring header;
-    std::wstring image_url;
-    std::wstring article_url;
-    std::wstring body;
+    std::string header;
+    std::string image_url;
+    std::string article_url;
+    std::string body;
 
     header = extract_csv_escaped(csv_view);
     if (!csv_view.empty()) {
@@ -815,7 +814,7 @@ static void parse_and_append_news_item_cmd(const std::wstring_view& line, mod_da
         if (!csv_view.empty()) {
             article_url = extract_csv_escaped(csv_view);
             if (!csv_view.empty()) {
-                body = std::wstring(csv_view);
+                body = std::string(csv_view);
             }
         }
     }
@@ -826,48 +825,47 @@ static void parse_and_append_news_item_cmd(const std::wstring_view& line, mod_da
 TEST_CASE("loader::parse_and_append_news_item_cmd") {
     mod_data data;
 
-    parse_and_append_news_item_cmd(L"InjectNewsItem,Header", data);
+    parse_and_append_news_item_cmd("InjectNewsItem,Header", data);
     REQUIRE(data.news_items.size() == 1);
-    REQUIRE(data.news_items[0] == news_item{L"Header"});
+    REQUIRE(data.news_items[0] == news_item{"Header"});
 
-    parse_and_append_news_item_cmd(L"InjectNewsItem,  Header  ,image.png", data);
+    parse_and_append_news_item_cmd("InjectNewsItem,  Header  ,image.png", data);
     REQUIRE(data.news_items.size() == 2);
-    REQUIRE(data.news_items[1] == news_item{L"  Header  ", L"image.png"});
+    REQUIRE(data.news_items[1] == news_item{"  Header  ", "image.png"});
 
-    parse_and_append_news_item_cmd(L"InjectNewsItem,Header,\"escaped,image.png\"", data);
+    parse_and_append_news_item_cmd("InjectNewsItem,Header,\"escaped,image.png\"", data);
     REQUIRE(data.news_items.size() == 3);
-    REQUIRE(data.news_items[2] == news_item{L"Header", L"escaped,image.png"});
+    REQUIRE(data.news_items[2] == news_item{"Header", "escaped,image.png"});
 
-    parse_and_append_news_item_cmd(L"InjectNewsItem,\"Header\",\"escaped,image.png\"", data);
+    parse_and_append_news_item_cmd("InjectNewsItem,\"Header\",\"escaped,image.png\"", data);
     REQUIRE(data.news_items.size() == 4);
-    REQUIRE(data.news_items[3] == news_item{L"Header", L"escaped,image.png"});
+    REQUIRE(data.news_items[3] == news_item{"Header", "escaped,image.png"});
 
-    parse_and_append_news_item_cmd(L"InjectNewsItem,\"Header\",,Article", data);
+    parse_and_append_news_item_cmd("InjectNewsItem,\"Header\",,Article", data);
     REQUIRE(data.news_items.size() == 5);
-    REQUIRE(data.news_items[4] == news_item{L"Header", L"", L"Article"});
+    REQUIRE(data.news_items[4] == news_item{"Header", "", "Article"});
 
-    parse_and_append_news_item_cmd(L"InjectNewsItem,, \t ,\"Article\"", data);
+    parse_and_append_news_item_cmd("InjectNewsItem,, \t ,\"Article\"", data);
     REQUIRE(data.news_items.size() == 6);
-    REQUIRE(data.news_items[5] == news_item{L"", L" \t ", L"Article"});
+    REQUIRE(data.news_items[5] == news_item{"", " \t ", "Article"});
 
-    parse_and_append_news_item_cmd(L"InjectNewsItem,Header,image.png,\"Article \"\"URL\"\"", data);
+    parse_and_append_news_item_cmd("InjectNewsItem,Header,image.png,\"Article \"\"URL\"\"", data);
     REQUIRE(data.news_items.size() == 7);
-    REQUIRE(data.news_items[6] == news_item{L"Header", L"image.png", L"Article \"URL\""});
+    REQUIRE(data.news_items[6] == news_item{"Header", "image.png", "Article \"URL\""});
 
-    parse_and_append_news_item_cmd(L"InjectNewsItem,,image.png,Article,Body", data);
+    parse_and_append_news_item_cmd("InjectNewsItem,,image.png,Article,Body", data);
     REQUIRE(data.news_items.size() == 8);
-    REQUIRE(data.news_items[7] == news_item{L"", L"image.png", L"Article", L"Body"});
+    REQUIRE(data.news_items[7] == news_item{"", "image.png", "Article", "Body"});
 
     parse_and_append_news_item_cmd(
-        L"InjectNewsItem,Header,image.png,Article,Body, with commas, and \"quotes\"", data);
+        "InjectNewsItem,Header,image.png,Article,Body, with commas, and \"quotes\"", data);
     REQUIRE(data.news_items.size() == 9);
-    REQUIRE(
-        data.news_items[8]
-        == news_item{L"Header", L"image.png", L"Article", L"Body, with commas, and \"quotes\""});
+    REQUIRE(data.news_items[8]
+            == news_item{"Header", "image.png", "Article", "Body, with commas, and \"quotes\""});
 
-    parse_and_append_news_item_cmd(L"InjectNewsItem,,,,,,Body, with commas, and \"quotes\"", data);
+    parse_and_append_news_item_cmd("InjectNewsItem,,,,,,Body, with commas, and \"quotes\"", data);
     REQUIRE(data.news_items.size() == 10);
-    REQUIRE(data.news_items[9] == news_item{L"", L"", L"", L",,Body, with commas, and \"quotes\""});
+    REQUIRE(data.news_items[9] == news_item{"", "", "", ",,Body, with commas, and \"quotes\""});
 
     REQUIRE(data.hotfixes.size() == 0);
     REQUIRE(data.type_11_hotfixes.size() == 0);
@@ -880,7 +878,7 @@ TEST_CASE("loader::parse_and_append_news_item_cmd") {
  * @param line The line to parse, without leading whitespace.
  * @return The path to the file to execute, or std::nullopt if parsing failed.
  */
-static std::optional<std::filesystem::path> parse_exec_cmd(const std::wstring_view& line) {
+static std::optional<std::filesystem::path> parse_exec_cmd(const std::string_view& line) {
     auto whitespace_start = line.find_first_of(WHITESPACE);
     auto path_start = line.find_first_not_of(WHITESPACE, whitespace_start + 1);
     if (path_start == std::string::npos) {
@@ -906,14 +904,14 @@ static std::optional<std::filesystem::path> parse_exec_cmd(const std::wstring_vi
 }
 
 TEST_CASE("loader::parse_exec_cmd") {
-    CHECK(parse_exec_cmd(L"exec abc.bl3hotfix") == (mod_dir / "abc.bl3hotfix"));
-    CHECK(parse_exec_cmd(L"exec   \t      abc.bl3hotfix      ") == (mod_dir / "abc.bl3hotfix"));
-    CHECK(parse_exec_cmd(L"exec nested/path.bl3hotfix") == (mod_dir / "nested" / "path.bl3hotfix"));
-    CHECK(parse_exec_cmd(L"exec D:\\absolute\\path.bl3hotfix")
+    CHECK(parse_exec_cmd("exec abc.bl3hotfix") == (mod_dir / "abc.bl3hotfix"));
+    CHECK(parse_exec_cmd("exec   \t      abc.bl3hotfix      ") == (mod_dir / "abc.bl3hotfix"));
+    CHECK(parse_exec_cmd("exec nested/path.bl3hotfix") == (mod_dir / "nested" / "path.bl3hotfix"));
+    CHECK(parse_exec_cmd("exec D:\\absolute\\path.bl3hotfix")
           == std::filesystem::path("D:\\") / "absolute" / "path.bl3hotfix");
-    CHECK(parse_exec_cmd(L"exec \"path with spaces.bl3hotfix\"")
+    CHECK(parse_exec_cmd("exec \"path with spaces.bl3hotfix\"")
           == (mod_dir / "path with spaces.bl3hotfix"));
-    CHECK(parse_exec_cmd(L"exec  '  more spaces.bl3hotfix'")
+    CHECK(parse_exec_cmd("exec  '  more spaces.bl3hotfix'")
           == (mod_dir / "  more spaces.bl3hotfix"));
 }
 
@@ -923,16 +921,16 @@ TEST_CASE("loader::parse_exec_cmd") {
  * @param line The line to parse, without leading whitespace.
  * @return The parsed url, or std::nullopt if unable to parse.
  */
-static std::optional<std::wstring> parse_url_cmd(const std::wstring_view& line) {
-    return std::wstring(line, URL_COMMAND.size(), line.size() - URL_COMMAND.size());
+static std::optional<std::string> parse_url_cmd(const std::string_view& line) {
+    return std::string(line, URL_COMMAND.size(), line.size() - URL_COMMAND.size());
 }
 
 TEST_CASE("loader::parse_url_cmd") {
-    CHECK(parse_url_cmd(L"url=https://example.com/mod.bl3hotfix")
-          == L"https://example.com/mod.bl3hotfix");
-    CHECK(parse_url_cmd(L"url=  \"https://example.com/mod.bl3hotfix\"")
-          == L"  \"https://example.com/mod.bl3hotfix\"");
-    CHECK(parse_url_cmd(L"URL=1234") == L"1234");
+    CHECK(parse_url_cmd("url=https://example.com/mod.bl3hotfix")
+          == "https://example.com/mod.bl3hotfix");
+    CHECK(parse_url_cmd("url=  \"https://example.com/mod.bl3hotfix\"")
+          == "  \"https://example.com/mod.bl3hotfix\"");
+    CHECK(parse_url_cmd("URL=1234") == "1234");
 }
 
 /**
@@ -944,19 +942,18 @@ TEST_CASE("loader::parse_url_cmd") {
 void mod_file::load_from_stream(std::istream& stream, bool allow_exec) {
     mod_data data{};
 
-    for (std::string narrow_mod_line; std::getline(stream, narrow_mod_line);) {
-        std::wstring wide_mod_line = ohl::util::widen(narrow_mod_line);
-        std::wstring_view mod_line{wide_mod_line};
+    for (std::string mod_line_str; std::getline(stream, mod_line_str);) {
+        std::string_view mod_line{mod_line_str};
 
         auto whitespace_end_pos = mod_line.find_first_not_of(WHITESPACE);
-        if (whitespace_end_pos == std::wstring::npos) {
+        if (whitespace_end_pos == std::string::npos) {
             continue;
         }
         mod_line = mod_line.substr(whitespace_end_pos);
 
-        auto lower_mod_line = wide_mod_line;
+        auto lower_mod_line = mod_line_str;
         std::transform(lower_mod_line.begin(), lower_mod_line.end(), lower_mod_line.begin(),
-                       std::towlower);
+                       [](char c) { return std::tolower(c); });
 
         /**
          * @brief Checks if the current line starts with the specified command.
@@ -998,63 +995,64 @@ void mod_file::load_from_stream(std::istream& stream, bool allow_exec) {
 
 TEST_CASE("loader::mod_file_local::load") {
     const hotfix basic_mod_hotfix{
-        L"SparkLevelPatchEntry",
-        L"(1,1,1,Crypt_P),/Game/Cinematics/_Design/NPCs/"
+        "SparkLevelPatchEntry",
+        "(1,1,1,Crypt_P),/Game/Cinematics/_Design/NPCs/"
         "BPCine_Actor_Typhon.BPCine_Actor_Typhon_C:SkeletalMesh_GEN_VARIABLE,"
         "bEnableUpdateRateOptimizations,4,True,False"};
-    const hotfix unicode_statement_hotfix{L"SparkPatchEntry",
-            (wchar_t*)u"(1,1,0,),/Game/PatchDLC/Raid1/Gear/Weapons/Link/"
-                      u"Name_MAL_SM_Link.Name_MAL_SM_Link,PartName,0,,Cú Chulainn"};
-    const hotfix sliding_hotfix{L"SparkPatchEntry",
-                                L"(1,1,0,),/Game/PlayerCharacters/_Shared/_Design/Sliding/"
-                                L"ControlledMove_Global_Sliding.Default__ControlledMove_Global_"
-                                L"Sliding_C,Duration.BaseValueConstant,0,,5000"};
+    const hotfix unicode_statement_hotfix{
+        "SparkPatchEntry",
+        u8"(1,1,0,),/Game/PatchDLC/Raid1/Gear/Weapons/Link/"
+        u8"Name_MAL_SM_Link.Name_MAL_SM_Link,PartName,0,,Cú Chulainn"};
+    const hotfix sliding_hotfix{"SparkPatchEntry",
+                                "(1,1,0,),/Game/PlayerCharacters/_Shared/_Design/Sliding/"
+                                "ControlledMove_Global_Sliding.Default__ControlledMove_Global_"
+                                "Sliding_C,Duration.BaseValueConstant,0,,5000"};
 
     const std::vector<std::pair<std::string, mod_data>> PARAMETERIZED_CASES{
         {"basic_mod.bl3hotfix", {{basic_mod_hotfix}, {}, {}, {}}},
         {"basic_mod.URL", {{basic_mod_hotfix}, {}, {}, {}}},
         {"unicode_statement.bl3hotfix", {{unicode_statement_hotfix}, {}, {}, {}}},
         {"easy_entry_to_fort_sunshine.bl3hotfix",
-         {{{L"SparkEarlyLevelPatchEntry",
-            L"(1,1,1,Wetlands_P),/Game/Maps/Zone_2/Wetlands/"
-            L"Wetlands_P.Wetlands_P:PersistentLevel.IO_Switch_Industrial_Prison_C_0."
-            L"DefaultSceneRoot,"
-            L"RelativeLocation,0,,(X=34927.000000,Y=10709.000000,Z=3139.000000)"},
-           {L"SparkEarlyLevelPatchEntry",
-            L"(1,1,1,Wetlands_P),/Game/Maps/Zone_2/Wetlands/"
-            L"Wetlands_P.Wetlands_P:PersistentLevel.IO_Switch_Industrial_Prison_C_0."
-            L"DefaultSceneRoot,"
-            L"RelativeRotation,0,,(Pitch=0.000000,Yaw=67.716370,Roll=0.000000)"},
-           {L"SparkEarlyLevelPatchEntry",
-            L"(1,1,1,Wetlands_P),/Game/Maps/Zone_2/Wetlands/"
-            L"Wetlands_P.Wetlands_P:PersistentLevel.IO_Switch_Industrial_Prison_C_0."
-            L"DefaultSceneRoot,"
-            L"RelativeScale3D,0,,(X=1.000000,Y=1.000000,Z=1.000000)"},
-           {L"SparkLevelPatchEntry",
-            L"(1,1,0,Wetlands_P),/Game/Maps/Zone_2/Wetlands/"
-            L"Wetlands_P.Wetlands_P:PersistentLevel.IO_Switch_Industrial_Prison_C_0,On_SwitchUsed,"
-            L"0,,("
-            L"Wetlands_M_EP12JakobsRebellion_C_11.BndEvt__IO_Switch_Circuit_Breaker_V_2_K2Node_"
-            L"ActorBoundEvent_0_On_SwitchUsed__DelegateSignature)"},
-           {L"SparkLevelPatchEntry",
-            L"(1,1,0,Wetlands_P),/Game/Maps/Zone_2/Wetlands/"
-            L"Wetlands_P.Wetlands_P:PersistentLevel.IO_Switch_Industrial_Prison_C_0,"
-            L"SingleActivation,"
-            L"0,,False"}},
-          {{L"SparkEarlyLevelPatchEntry",
-            L"(1,11,0,Wetlands_P),/Game/Maps/Zone_2/Wetlands,/Game/InteractiveObjects/Switches/"
-            L"Lever/"
-            L"Design,IO_Switch_Industrial_Prison,80,\"0.000000,0.000000,0.000000|0.000000,0.000000,"
-            L"0."
-            L"000000|1.000000,1.000000,1.000000\""}},
-          {L"Wetlands_P"},
+         {{{"SparkEarlyLevelPatchEntry",
+            "(1,1,1,Wetlands_P),/Game/Maps/Zone_2/Wetlands/"
+            "Wetlands_P.Wetlands_P:PersistentLevel.IO_Switch_Industrial_Prison_C_0."
+            "DefaultSceneRoot,"
+            "RelativeLocation,0,,(X=34927.000000,Y=10709.000000,Z=3139.000000)"},
+           {"SparkEarlyLevelPatchEntry",
+            "(1,1,1,Wetlands_P),/Game/Maps/Zone_2/Wetlands/"
+            "Wetlands_P.Wetlands_P:PersistentLevel.IO_Switch_Industrial_Prison_C_0."
+            "DefaultSceneRoot,"
+            "RelativeRotation,0,,(Pitch=0.000000,Yaw=67.716370,Roll=0.000000)"},
+           {"SparkEarlyLevelPatchEntry",
+            "(1,1,1,Wetlands_P),/Game/Maps/Zone_2/Wetlands/"
+            "Wetlands_P.Wetlands_P:PersistentLevel.IO_Switch_Industrial_Prison_C_0."
+            "DefaultSceneRoot,"
+            "RelativeScale3D,0,,(X=1.000000,Y=1.000000,Z=1.000000)"},
+           {"SparkLevelPatchEntry",
+            "(1,1,0,Wetlands_P),/Game/Maps/Zone_2/Wetlands/"
+            "Wetlands_P.Wetlands_P:PersistentLevel.IO_Switch_Industrial_Prison_C_0,On_SwitchUsed,"
+            "0,,("
+            "Wetlands_M_EP12JakobsRebellion_C_11.BndEvt__IO_Switch_Circuit_Breaker_V_2_K2Node_"
+            "ActorBoundEvent_0_On_SwitchUsed__DelegateSignature)"},
+           {"SparkLevelPatchEntry",
+            "(1,1,0,Wetlands_P),/Game/Maps/Zone_2/Wetlands/"
+            "Wetlands_P.Wetlands_P:PersistentLevel.IO_Switch_Industrial_Prison_C_0,"
+            "SingleActivation,"
+            "0,,False"}},
+          {{"SparkEarlyLevelPatchEntry",
+            "(1,11,0,Wetlands_P),/Game/Maps/Zone_2/Wetlands,/Game/InteractiveObjects/Switches/"
+            "Lever/"
+            "Design,IO_Switch_Industrial_Prison,80,\"0.000000,0.000000,0.000000|0.000000,0.000000,"
+            "0."
+            "000000|1.000000,1.000000,1.000000\""}},
+          {"Wetlands_P"},
           {}}},
         {"single_exec.bl3hotfix", {{basic_mod_hotfix}, {}, {}, {}}},
         {"nested_exec.bl3hotfix", {{basic_mod_hotfix}, {}, {}, {}}},
         {"multi_exec.bl3hotfix",
          {{basic_mod_hotfix, unicode_statement_hotfix, sliding_hotfix}, {}, {}, {}}},
         {"multi_exec.URL", {{sliding_hotfix}, {}, {}, {}}},
-        {"news.bl3hotfix", {{}, {}, {}, {{L"My News Item", L"", L"https://example.com"}}}},
+        {"news.bl3hotfix", {{}, {}, {}, {{"My News Item", "", "https://example.com"}}}},
     };
 
     auto original_mod_dir = mod_dir;
@@ -1099,33 +1097,33 @@ static news_item get_ohl_news_item(size_t hotfix_count,
                                    std::vector<std::shared_ptr<mod_file>> file_order) {
     // If we're in BL3, colour the name.
     // WL doesn't support font tags :(
-    std::wstring ohl_name;
+    std::string ohl_name;
     if (ohl::args::exe_path().stem() == "Borderlands3") {
         ohl_name =
-            L"<font color='#0080E0'>OHL</font><font size='14' color='#C0C0C0'> " VERSION_STRING
+            "<font color='#0080E0'>OHL</font><font size='14' color='#C0C0C0'> " VERSION_STRING
             "</font>";
     } else {
-        ohl_name = L"OHL " VERSION_STRING;
+        ohl_name = "OHL " VERSION_STRING;
     }
 
-    std::wstring header;
+    std::string header;
     if (hotfix_count > 1) {
-        header = ohl_name + L": " + std::to_wstring(hotfix_count) + L" hotfixes loaded";
+        header = ohl_name + ": " + std::to_string(hotfix_count) + " hotfixes loaded";
     } else if (hotfix_count == 1) {
-        header = ohl_name + L": 1 hotfix loaded";
+        header = ohl_name + ": 1 hotfix loaded";
     } else {
-        header = ohl_name + L": No hotfixes loaded";
+        header = ohl_name + ": No hotfixes loaded";
     }
 
-    std::wstring body;
+    std::string body;
     if (hotfix_count == 0) {
-        body = L"No hotfixes loaded";
+        body = "No hotfixes loaded";
     } else {
-        std::wstringstream stream{};
-        stream << L"Loaded files:\n";
+        std::stringstream stream{};
+        stream << "Loaded files:\n";
 
         for (const auto& file : file_order) {
-            stream << file->get_display_name() << L",\n";
+            stream << file->get_display_name() << ",\n";
         }
 
         body = stream.str();
@@ -1136,19 +1134,19 @@ static news_item get_ohl_news_item(size_t hotfix_count,
 
 TEST_CASE("loader::get_ohl_news_item") {
     auto empty_news = get_ohl_news_item(0, {});
-    CHECK(empty_news.header == L"OHL " VERSION_STRING ": No hotfixes loaded");
+    CHECK(empty_news.header == "OHL " VERSION_STRING ": No hotfixes loaded");
     CHECK(empty_news.image_url == OHL_NEWS_ITEM_IMAGE_URL);
     CHECK(empty_news.article_url == OHL_NEWS_ITEM_ARTICLE_URL);
-    CHECK(empty_news.body == L"No hotfixes loaded");
+    CHECK(empty_news.body == "No hotfixes loaded");
 
     auto one_news = get_ohl_news_item(1, {});
-    CHECK(one_news.header == L"OHL " VERSION_STRING ": 1 hotfix loaded");
+    CHECK(one_news.header == "OHL " VERSION_STRING ": 1 hotfix loaded");
     CHECK(one_news.image_url == OHL_NEWS_ITEM_IMAGE_URL);
     CHECK(one_news.article_url == OHL_NEWS_ITEM_ARTICLE_URL);
     // Going to leave body formatting indeterminate for >0
 
     auto multi_news = get_ohl_news_item(1234, {});
-    CHECK(multi_news.header == L"OHL " VERSION_STRING ": 1234 hotfixes loaded");
+    CHECK(multi_news.header == "OHL " VERSION_STRING ": 1234 hotfixes loaded");
     CHECK(multi_news.image_url == OHL_NEWS_ITEM_IMAGE_URL);
     CHECK(multi_news.article_url == OHL_NEWS_ITEM_ARTICLE_URL);
 }
@@ -1191,14 +1189,14 @@ static void reload_impl(void) {
 
     // Add type 11s to the front of the list, and their delays after them but before the rest
     for (const auto& map : combined_mod_data.type_11_maps) {
-        static const auto map_start_pos = TYPE_11_DELAY_VALUE.find(L"{map}");
+        static const auto map_start_pos = TYPE_11_DELAY_VALUE.find("{map}");
         static const auto map_length = 5;
-        static const auto mesh_start_pos = TYPE_11_DELAY_VALUE.find(L"{mesh}");
+        static const auto mesh_start_pos = TYPE_11_DELAY_VALUE.find("{mesh}");
         static const auto mesh_length = 6;
 
         for (const auto& mesh : TYPE_11_DELAY_MESHES) {
             // Make sure to replace mesh first, since it appears later in the string
-            auto hotfix = std::wstring(TYPE_11_DELAY_VALUE)
+            auto hotfix = std::string(TYPE_11_DELAY_VALUE)
                               .replace(mesh_start_pos, mesh_length, mesh)
                               .replace(map_start_pos, map_length, map);
             combined_mod_data.type_11_hotfixes.emplace_back(TYPE_11_DELAY_TYPE, hotfix);
@@ -1259,7 +1257,7 @@ void reload(void) {
     thread.detach();
 
     // Busy wait for the thread to start before exiting
-    while (!reloading_started);
+    while (!reloading_started) {}
     reloading_started = false;
 }
 
@@ -1278,78 +1276,76 @@ std::deque<news_item> get_news_items(void) {
 TEST_CASE("loader integration") {
     const std::vector<hotfix> expected_hotfixes{
         // Type 11s
-        {L"SparkEarlyLevelPatchEntry",
-         L"(1,11,0,Wetlands_P),/Game/Maps/Zone_2/Wetlands,/Game/InteractiveObjects/Switches/"
-         L"Lever/"
-         L"Design,IO_Switch_Industrial_Prison,80,\"0.000000,0.000000,0.000000|0.000000,0.000000,"
-         L"0."
-         L"000000|1.000000,1.000000,1.000000\""},
+        {"SparkEarlyLevelPatchEntry",
+         "(1,11,0,Wetlands_P),/Game/Maps/Zone_2/Wetlands,/Game/InteractiveObjects/Switches/Lever/"
+         "Design,IO_Switch_Industrial_Prison,80,\"0.000000,0.000000,0.000000|0.000000,0.000000,0."
+         "000000|1.000000,1.000000,1.000000\""},
 
         // Type 11 Delays
-        {L"SparkEarlyLevelPatchEntry",
-         L"(1,1,0,Wetlands_P),/Game/Pickups/Ammo/"
-         L"BPAmmoItem_Pistol.Default__BPAmmoItem_Pistol_C,ItemMeshComponent.Object..StaticMesh,0,,"
-         L"StaticMesh'\"/Engine/EditorMeshes/Camera/SM_CraneRig_Arm.SM_CraneRig_Arm\"'"},
-        {L"SparkEarlyLevelPatchEntry",
-         L"(1,1,0,Wetlands_P),/Game/Pickups/Ammo/"
-         L"BPAmmoItem_Pistol.Default__BPAmmoItem_Pistol_C,ItemMeshComponent.Object..StaticMesh,0,,"
-         L"StaticMesh'\"/Engine/EditorMeshes/Camera/SM_CraneRig_Base.SM_CraneRig_Base\"'"},
-        {L"SparkEarlyLevelPatchEntry",
-         L"(1,1,0,Wetlands_P),/Game/Pickups/Ammo/"
-         L"BPAmmoItem_Pistol.Default__BPAmmoItem_Pistol_C,ItemMeshComponent.Object..StaticMesh,0,,"
-         L"StaticMesh'\"/Engine/EditorMeshes/Camera/SM_CraneRig_Body.SM_CraneRig_Body\"'"},
-        {L"SparkEarlyLevelPatchEntry",
-         L"(1,1,0,Wetlands_P),/Game/Pickups/Ammo/"
-         L"BPAmmoItem_Pistol.Default__BPAmmoItem_Pistol_C,ItemMeshComponent.Object..StaticMesh,0,,"
-         L"StaticMesh'\"/Engine/EditorMeshes/Camera/SM_CraneRig_Mount.SM_CraneRig_Mount\"'"},
-        {L"SparkEarlyLevelPatchEntry",
-         L"(1,1,0,Wetlands_P),/Game/Pickups/Ammo/"
-         L"BPAmmoItem_Pistol.Default__BPAmmoItem_Pistol_C,ItemMeshComponent.Object..StaticMesh,0,,"
-         L"StaticMesh'\"/Engine/EditorMeshes/Camera/SM_RailRig_Mount.SM_RailRig_Mount\"'"},
-        {L"SparkEarlyLevelPatchEntry",
-         L"(1,1,0,Wetlands_P),/Game/Pickups/Ammo/"
-         L"BPAmmoItem_Pistol.Default__BPAmmoItem_Pistol_C,ItemMeshComponent.Object..StaticMesh,0,,"
-         L"StaticMesh'\"/Engine/EditorMeshes/Camera/SM_RailRig_Track.SM_RailRig_Track\"'"},
-        {L"SparkEarlyLevelPatchEntry",
-         L"(1,1,0,Wetlands_P),/Game/Pickups/Ammo/"
-         L"BPAmmoItem_Pistol.Default__BPAmmoItem_Pistol_C,ItemMeshComponent.Object..StaticMesh,0,,"
-         L"StaticMesh'\"/Game/Pickups/Ammo/Model/Meshes/SM_ammo_pistol.SM_ammo_pistol\"'"},
+        {"SparkEarlyLevelPatchEntry",
+         "(1,1,0,Wetlands_P),/Game/Pickups/Ammo/"
+         "BPAmmoItem_Pistol.Default__BPAmmoItem_Pistol_C,ItemMeshComponent.Object..StaticMesh,0,,"
+         "StaticMesh'\"/Engine/EditorMeshes/Camera/SM_CraneRig_Arm.SM_CraneRig_Arm\"'"},
+        {"SparkEarlyLevelPatchEntry",
+         "(1,1,0,Wetlands_P),/Game/Pickups/Ammo/"
+         "BPAmmoItem_Pistol.Default__BPAmmoItem_Pistol_C,ItemMeshComponent.Object..StaticMesh,0,,"
+         "StaticMesh'\"/Engine/EditorMeshes/Camera/SM_CraneRig_Base.SM_CraneRig_Base\"'"},
+        {"SparkEarlyLevelPatchEntry",
+         "(1,1,0,Wetlands_P),/Game/Pickups/Ammo/"
+         "BPAmmoItem_Pistol.Default__BPAmmoItem_Pistol_C,ItemMeshComponent.Object..StaticMesh,0,,"
+         "StaticMesh'\"/Engine/EditorMeshes/Camera/SM_CraneRig_Body.SM_CraneRig_Body\"'"},
+        {"SparkEarlyLevelPatchEntry",
+         "(1,1,0,Wetlands_P),/Game/Pickups/Ammo/"
+         "BPAmmoItem_Pistol.Default__BPAmmoItem_Pistol_C,ItemMeshComponent.Object..StaticMesh,0,,"
+         "StaticMesh'\"/Engine/EditorMeshes/Camera/SM_CraneRig_Mount.SM_CraneRig_Mount\"'"},
+        {"SparkEarlyLevelPatchEntry",
+         "(1,1,0,Wetlands_P),/Game/Pickups/Ammo/"
+         "BPAmmoItem_Pistol.Default__BPAmmoItem_Pistol_C,ItemMeshComponent.Object..StaticMesh,0,,"
+         "StaticMesh'\"/Engine/EditorMeshes/Camera/SM_RailRig_Mount.SM_RailRig_Mount\"'"},
+        {"SparkEarlyLevelPatchEntry",
+         "(1,1,0,Wetlands_P),/Game/Pickups/Ammo/"
+         "BPAmmoItem_Pistol.Default__BPAmmoItem_Pistol_C,ItemMeshComponent.Object..StaticMesh,0,,"
+         "StaticMesh'\"/Engine/EditorMeshes/Camera/SM_RailRig_Track.SM_RailRig_Track\"'"},
+        {"SparkEarlyLevelPatchEntry",
+         "(1,1,0,Wetlands_P),/Game/Pickups/Ammo/"
+         "BPAmmoItem_Pistol.Default__BPAmmoItem_Pistol_C,ItemMeshComponent.Object..StaticMesh,0,,"
+         "StaticMesh'\"/Game/Pickups/Ammo/Model/Meshes/SM_ammo_pistol.SM_ammo_pistol\"'"},
 
         // Regular hotfixes
-        {L"SparkPatchEntry",
-         (wchar_t*)u"(1,1,0,),/Game/PatchDLC/Raid1/Gear/Weapons/Link/"
-                   u"Name_MAL_SM_Link.Name_MAL_SM_Link,PartName,0,,Cú Chulainn"},
+        {"SparkPatchEntry",
+         u8"(1,1,0,),/Game/PatchDLC/Raid1/Gear/Weapons/Link/"
+         u8"Name_MAL_SM_Link.Name_MAL_SM_Link,PartName,0,,Cú Chulainn"},
 
-        {L"SparkEarlyLevelPatchEntry",
-         L"(1,1,1,Wetlands_P),/Game/Maps/Zone_2/Wetlands/"
-         L"Wetlands_P.Wetlands_P:PersistentLevel.IO_Switch_Industrial_Prison_C_0."
-         L"DefaultSceneRoot,"
-         L"RelativeLocation,0,,(X=34927.000000,Y=10709.000000,Z=3139.000000)"},
-        {L"SparkEarlyLevelPatchEntry",
-         L"(1,1,1,Wetlands_P),/Game/Maps/Zone_2/Wetlands/"
-         L"Wetlands_P.Wetlands_P:PersistentLevel.IO_Switch_Industrial_Prison_C_0."
-         L"DefaultSceneRoot,"
-         L"RelativeRotation,0,,(Pitch=0.000000,Yaw=67.716370,Roll=0.000000)"},
-        {L"SparkEarlyLevelPatchEntry",
-         L"(1,1,1,Wetlands_P),/Game/Maps/Zone_2/Wetlands/"
-         L"Wetlands_P.Wetlands_P:PersistentLevel.IO_Switch_Industrial_Prison_C_0."
-         L"DefaultSceneRoot,"
-         L"RelativeScale3D,0,,(X=1.000000,Y=1.000000,Z=1.000000)"},
-        {L"SparkLevelPatchEntry",
-         L"(1,1,0,Wetlands_P),/Game/Maps/Zone_2/Wetlands/"
-         L"Wetlands_P.Wetlands_P:PersistentLevel.IO_Switch_Industrial_Prison_C_0,On_SwitchUsed,"
-         L"0,,("
-         L"Wetlands_M_EP12JakobsRebellion_C_11.BndEvt__IO_Switch_Circuit_Breaker_V_2_K2Node_"
-         L"ActorBoundEvent_0_On_SwitchUsed__DelegateSignature)"},
-        {L"SparkLevelPatchEntry",
-         L"(1,1,0,Wetlands_P),/Game/Maps/Zone_2/Wetlands/"
-         L"Wetlands_P.Wetlands_P:PersistentLevel.IO_Switch_Industrial_Prison_C_0,"
-         L"SingleActivation,"
-         L"0,,False"},
+        {"SparkEarlyLevelPatchEntry",
+         "(1,1,1,Wetlands_P),/Game/Maps/Zone_2/Wetlands/"
+         "Wetlands_P.Wetlands_P:PersistentLevel.IO_Switch_Industrial_Prison_C_0."
+         "DefaultSceneRoot,"
+         "RelativeLocation,0,,(X=34927.000000,Y=10709.000000,Z=3139.000000)"},
+        {"SparkEarlyLevelPatchEntry",
+         "(1,1,1,Wetlands_P),/Game/Maps/Zone_2/Wetlands/"
+         "Wetlands_P.Wetlands_P:PersistentLevel.IO_Switch_Industrial_Prison_C_0."
+         "DefaultSceneRoot,"
+         "RelativeRotation,0,,(Pitch=0.000000,Yaw=67.716370,Roll=0.000000)"},
+        {"SparkEarlyLevelPatchEntry",
+         "(1,1,1,Wetlands_P),/Game/Maps/Zone_2/Wetlands/"
+         "Wetlands_P.Wetlands_P:PersistentLevel.IO_Switch_Industrial_Prison_C_0."
+         "DefaultSceneRoot,"
+         "RelativeScale3D,0,,(X=1.000000,Y=1.000000,Z=1.000000)"},
+        {"SparkLevelPatchEntry",
+         "(1,1,0,Wetlands_P),/Game/Maps/Zone_2/Wetlands/"
+         "Wetlands_P.Wetlands_P:PersistentLevel.IO_Switch_Industrial_Prison_C_0,On_SwitchUsed,"
+         "0,,("
+         "Wetlands_M_EP12JakobsRebellion_C_11.BndEvt__IO_Switch_Circuit_Breaker_V_2_K2Node_"
+         "ActorBoundEvent_0_On_SwitchUsed__DelegateSignature)"},
+        {"SparkLevelPatchEntry",
+         "(1,1,0,Wetlands_P),/Game/Maps/Zone_2/Wetlands/"
+         "Wetlands_P.Wetlands_P:PersistentLevel.IO_Switch_Industrial_Prison_C_0,"
+         "SingleActivation,"
+         "0,,False"},
 
     };
     const std::vector<news_item> expected_news_items{
-        {L"My News Item", L"", L"https://example.com"},
+        {"My News Item", "", "https://example.com"},
     };
 
     auto original_mod_dir = mod_dir;
@@ -1362,7 +1358,7 @@ TEST_CASE("loader integration") {
     news_item ohl_news = news_items[0];
     news_items.pop_front();
 
-    CHECK(ohl_news.header == L"OHL " VERSION_STRING ": 14 hotfixes loaded");
+    CHECK(ohl_news.header == "OHL " VERSION_STRING ": 14 hotfixes loaded");
     CHECK(ohl_news.image_url == OHL_NEWS_ITEM_IMAGE_URL);
     CHECK(ohl_news.article_url == OHL_NEWS_ITEM_ARTICLE_URL);
 

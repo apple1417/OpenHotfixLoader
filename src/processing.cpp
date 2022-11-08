@@ -4,6 +4,7 @@
 #include "hooks.h"
 #include "loader.h"
 #include "unreal.h"
+#include "util.h"
 
 using namespace ohl::unreal;
 
@@ -104,11 +105,11 @@ static void add_ref_controller(TSharedPtr<T>* ptr, void* vf_table) {
  * @param str The FString to fill.
  * @param value The value to set.
  */
-static void alloc_string(FString* str, std::wstring value) {
+static void alloc_string(FString* str, const std::string& value) {
     str->count = value.size() + 1;
     str->max = str->count;
     str->data = ohl::hooks::malloc<wchar_t>(str->count * sizeof(wchar_t));
-    wcsncpy(str->data, value.c_str(), str->count - 1);
+    wcsncpy(str->data, ohl::util::widen(value).c_str(), str->count - 1);
     str->data[str->count - 1] = '\0';
 }
 
@@ -118,7 +119,7 @@ static void alloc_string(FString* str, std::wstring value) {
  * @param value The value of the string.
  * @return A pointer to the new object.
  */
-static FJsonValueString* create_json_string(std::wstring value) {
+static FJsonValueString* create_json_string(std::string value) {
     auto obj = ohl::hooks::malloc<FJsonValueString>(sizeof(FJsonValueString));
     obj->vf_table = vf_table.json_value_string;
     obj->type = EJson::String;
@@ -135,8 +136,7 @@ static FJsonValueString* create_json_string(std::wstring value) {
  * @return A pointer to the new object.
  */
 template <size_t n>
-static FJsonObject* create_json_object(
-    std::array<std::pair<std::wstring, FJsonValue*>, n> entries) {
+static FJsonObject* create_json_object(std::array<std::pair<std::string, FJsonValue*>, n> entries) {
     static_assert(0 < n && n <= ARRAYSIZE(KNOWN_OBJECT_PATTERNS));
 
     auto obj = ohl::hooks::malloc<FJsonObject>(sizeof(FJsonObject));
@@ -206,15 +206,15 @@ static FJsonValueObject* create_json_value_object(FJsonObject* obj) {
  *
  * @return The current time string.
  */
-static std::wstring get_current_time_str(void) {
+static std::string get_current_time_str(void) {
     auto time = std::time(nullptr);
     auto utc = std::gmtime(&time);
 
     // Only need 25 but let's be safe
-    wchar_t buf[64] = {};
-    wcsftime(buf, sizeof(buf), L"%FT%T.000Z", utc);
+    char buf[64] = {};
+    strftime(buf, sizeof(buf), "%FT%T.000Z", utc);
 
-    return std::wstring(buf);
+    return std::string(buf);
 }
 
 void handle_get_verification(void) {
@@ -262,8 +262,8 @@ void handle_discovery_from_json(FJsonObject** json) {
     auto i = params->entries.count;
     for (const auto& [key, value] : hotfixes) {
         auto hotfix_entry = create_json_object<2>(
-            {{{L"key", create_json_string(key + std::to_wstring(i + HOTFIX_COUNTER_OFFSET))},
-              {L"value", create_json_string(value)}}});
+            {{{"key", create_json_string(key + std::to_string(i + HOTFIX_COUNTER_OFFSET))},
+              {"value", create_json_string(value)}}});
 
         params->entries.data[i].obj = create_json_value_object(hotfix_entry);
         add_ref_controller(&params->entries.data[i], vf_table.shared_ptr_json_value);
@@ -341,32 +341,32 @@ void handle_news_from_json(ohl::unreal::FJsonObject** json) {
     auto i = 0;
     for (const auto& news_item : news_items) {
         auto contents_obj =
-            create_json_object<2>({{{L"header", create_json_string(news_item.header)},
-                                    {L"body", create_json_string(news_item.body)}}});
+            create_json_object<2>({{{"header", create_json_string(news_item.header)},
+                                    {"body", create_json_string(news_item.body)}}});
         auto contents_arr = create_json_array({create_json_value_object(contents_obj)});
 
         auto image_meta_tag_obj =
-            create_json_object<1>({{{L"tag", create_json_string(L"img_game_sm_noloc")}}});
+            create_json_object<1>({{{"tag", create_json_string("img_game_sm_noloc")}}});
         auto image_tags_obj =
-            create_json_object<2>({{{L"meta_tag", create_json_value_object(image_meta_tag_obj)},
-                                    {L"value", create_json_string(news_item.image_url)}}});
+            create_json_object<2>({{{"meta_tag", create_json_value_object(image_meta_tag_obj)},
+                                    {"value", create_json_string(news_item.image_url)}}});
 
         auto article_meta_tag_obj =
-            create_json_object<1>({{{L"tag", create_json_string(L"url_learn_more_noloc")}}});
+            create_json_object<1>({{{"tag", create_json_string("url_learn_more_noloc")}}});
         auto article_tags_obj =
-            create_json_object<2>({{{L"meta_tag", create_json_value_object(article_meta_tag_obj)},
-                                    {L"value", create_json_string(news_item.article_url)}}});
+            create_json_object<2>({{{"meta_tag", create_json_value_object(article_meta_tag_obj)},
+                                    {"value", create_json_string(news_item.article_url)}}});
 
         auto tags_arr = create_json_array(
             {create_json_value_object(image_tags_obj), create_json_value_object(article_tags_obj)});
 
         auto availablities_obj =
-            create_json_object<1>({{{L"startTime", create_json_string(get_current_time_str())}}});
+            create_json_object<1>({{{"startTime", create_json_string(get_current_time_str())}}});
         auto availabilities_arr = create_json_array({create_json_value_object(availablities_obj)});
 
-        auto news_obj = create_json_object<3>({{{L"contents", contents_arr},
-                                                {L"article_tags", tags_arr},
-                                                {L"availabilities", availabilities_arr}}});
+        auto news_obj = create_json_object<3>({{{"contents", contents_arr},
+                                                {"article_tags", tags_arr},
+                                                {"availabilities", availabilities_arr}}});
 
         news_data->entries.data[i].obj = create_json_value_object(news_obj);
         add_ref_controller(&news_data->entries.data[i], vf_table.shared_ptr_json_value);
@@ -379,7 +379,7 @@ void handle_news_from_json(ohl::unreal::FJsonObject** json) {
 }
 
 bool handle_add_image_to_cache(TSharedPtr<FSparkRequest>* req) {
-    auto url = req->obj->get_url();
+    auto url = ohl::util::narrow(req->obj->get_url());
 
     auto news_items = ohl::loader::get_news_items();
     auto may_continue = std::find_if(news_items.begin(), news_items.end(),
