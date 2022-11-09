@@ -8,18 +8,37 @@ namespace ohl::loader {
  * @brief Struct representing a single hotfix entry.
  */
 struct hotfix {
-    std::wstring type;
-    std::wstring value;
+    std::string key;
+    std::string value;
+
+    hotfix(const std::string& key = "", const std::string& value = "") : key(key), value(value) {}
+
+    bool operator==(const hotfix& rhs) const {
+        return this->key == rhs.key && this->value == rhs.value;
+    }
+    bool operator!=(const hotfix& rhs) const { return !operator==(rhs); }
 };
 
 /**
  * @brief Struct representing a single injected news item. *
  */
 struct news_item {
-    std::wstring header;
-    std::wstring image_url;
-    std::wstring article_url;
-    std::wstring body;
+    std::string header;
+    std::string image_url;
+    std::string article_url;
+    std::string body;
+
+    news_item(const std::string& header = "",
+              const std::string& image_url = "",
+              const std::string& article_url = "",
+              const std::string& body = "")
+        : header(header), image_url(image_url), article_url(article_url), body(body) {}
+
+    bool operator==(const news_item& rhs) const {
+        return this->header == rhs.header && this->image_url == rhs.image_url
+               && this->article_url == rhs.article_url && this->body == rhs.body;
+    }
+    bool operator!=(const news_item& rhs) const { return !operator==(rhs); }
 };
 
 /**

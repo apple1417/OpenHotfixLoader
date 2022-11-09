@@ -17,7 +17,7 @@ struct FString : TArray<wchar_t> {
      *
      * @return An stl string.
      */
-    std::wstring to_wstr(void);
+    std::wstring to_wstr(void) const;
 };
 
 struct FReferenceControllerBase {
@@ -75,7 +75,7 @@ struct FJsonObject {
      * @return A pointer to the value object.
      */
     template <typename T>
-    T* get(std::wstring key);
+    T* get(std::wstring key) const;
 };
 
 struct FJsonValueString : FJsonValue {
@@ -86,7 +86,7 @@ struct FJsonValueString : FJsonValue {
      *
      * @return An stl string.
      */
-    std::wstring to_wstr(void);
+    std::wstring to_wstr(void) const;
 };
 
 struct FJsonValueArray : FJsonValue {
@@ -97,7 +97,7 @@ struct FJsonValueArray : FJsonValue {
      *
      * @return The amount of items.
      */
-    uint32_t count(void);
+    uint32_t count(void) const;
 
     /**
      * @brief Gets an entry in the array given it's index.
@@ -108,7 +108,7 @@ struct FJsonValueArray : FJsonValue {
      * @return A pointer to the value object.
      */
     template <typename T>
-    T* get(uint32_t idx);
+    T* get(uint32_t idx) const;
 };
 
 struct FJsonValueObject : FJsonValue {
@@ -119,7 +119,7 @@ struct FJsonValueObject : FJsonValue {
      *
      * @return A pointer to the object.
      */
-    FJsonObject* to_obj(void);
+    FJsonObject* to_obj(void) const;
 };
 
 struct FSparkRequest {
@@ -131,7 +131,7 @@ struct FSparkRequest {
      *
      * @return the url string
      */
-    std::wstring get_url(void);
+    std::wstring get_url(void) const;
 };
 
 }  // namespace ohl::unreal

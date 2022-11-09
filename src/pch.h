@@ -1,6 +1,7 @@
 #pragma once
 
 #define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
 #include <windows.h>
 
 #include <MinHook.h>
@@ -14,10 +15,11 @@
 #include <plog/Log.h>
 
 #include <array>
+#include <atomic>
+#include <cctype>
 #include <codecvt>
 #include <cstdint>
 #include <cwchar>
-#include <cwctype>
 #include <deque>
 #include <filesystem>
 #include <fstream>
@@ -53,3 +55,19 @@ using std::uint8_t;
 #define URL_UNESCAPE_AS_UTF8 0x00040000
 #endif
 #endif
+
+/**
+ * @brief Shortcut macro which checks if two iterables are equal.
+ * @note Iterables must define `.begin()` and `.end()` functions, returning the relevant iterators.
+ *
+ * @param A The first iterable.
+ * @param B The second iterable.
+ */
+#define ITERABLE_EQUAL(A, B) std::equal((A).begin(), (A).end(), (B).begin(), (B).end())
+
+/**
+ * @brief The github URLs for the OHL project.
+ * @note The raw url includes `/master/`.
+ */
+#define OHL_GITHUB_URL "https://github.com/apple1417/OpenHotfixLoader/"
+#define OHL_GITHUB_RAW_URL "https://raw.githubusercontent.com/apple1417/OpenHotfixLoader/master/"

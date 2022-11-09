@@ -33,8 +33,8 @@ struct JTypeMapping<FJsonValueObject> {
 template <typename T>
 T* FJsonValue::cast(void) {
     if (this->type != JTypeMapping<T>::enum_type) {
-        throw std::runtime_error("JSON object was of unexpected type " +
-                                 std::to_string((uint32_t)this->type));
+        throw std::runtime_error("JSON object was of unexpected type "
+                                 + std::to_string((uint32_t)this->type));
     }
     return reinterpret_cast<T*>(this);
 }
@@ -43,24 +43,24 @@ T* FJsonValue::cast(void) {
 
 #pragma region Accessors
 
-std::wstring FString::to_wstr(void) {
+std::wstring FString::to_wstr(void) const {
     return std::wstring(this->data);
 }
 
-std::wstring FJsonValueString::to_wstr(void) {
+std::wstring FJsonValueString::to_wstr(void) const {
     return this->str.to_wstr();
 }
 
-std::wstring FSparkRequest::get_url(void) {
+std::wstring FSparkRequest::get_url(void) const {
     return this->url.to_wstr();
 }
 
-uint32_t FJsonValueArray::count() {
+uint32_t FJsonValueArray::count() const {
     return this->entries.count;
 }
 
 template <typename T>
-T* FJsonValueArray::get(uint32_t idx) {
+T* FJsonValueArray::get(uint32_t idx) const {
     if (idx > this->count()) {
         throw std::out_of_range("Array index out of range");
     }
@@ -68,7 +68,7 @@ T* FJsonValueArray::get(uint32_t idx) {
 }
 
 template <typename T>
-T* FJsonObject::get(std::wstring key) {
+T* FJsonObject::get(std::wstring key) const {
     for (auto i = 0; i < this->entries.count; i++) {
         auto entry = this->entries.data[i];
         if (entry.key.to_wstr() == key) {
@@ -78,7 +78,7 @@ T* FJsonObject::get(std::wstring key) {
     throw std::runtime_error("Couldn't find key!");
 }
 
-FJsonObject* FJsonValueObject::to_obj(void) {
+FJsonObject* FJsonValueObject::to_obj(void) const {
     return this->value.obj;
 }
 
@@ -90,13 +90,13 @@ template FJsonValueString* FJsonValue::cast(void);
 template FJsonValueArray* FJsonValue::cast(void);
 template FJsonValueObject* FJsonValue::cast(void);
 
-template FJsonValueString* FJsonValueArray::get(uint32_t);
-template FJsonValueArray* FJsonValueArray::get(uint32_t);
-template FJsonValueObject* FJsonValueArray::get(uint32_t);
+template FJsonValueString* FJsonValueArray::get(uint32_t) const;
+template FJsonValueArray* FJsonValueArray::get(uint32_t) const;
+template FJsonValueObject* FJsonValueArray::get(uint32_t) const;
 
-template FJsonValueString* FJsonObject::get(std::wstring key);
-template FJsonValueArray* FJsonObject::get(std::wstring key);
-template FJsonValueObject* FJsonObject::get(std::wstring key);
+template FJsonValueString* FJsonObject::get(std::wstring key) const;
+template FJsonValueArray* FJsonObject::get(std::wstring key) const;
+template FJsonValueObject* FJsonObject::get(std::wstring key) const;
 
 #pragma endregion
 

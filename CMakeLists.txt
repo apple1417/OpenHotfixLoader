@@ -18,10 +18,15 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/user-includes.cmake")
     include("${CMAKE_CURRENT_SOURCE_DIR}/user-includes.cmake")
 endif()
 
+enable_testing()
+
 # Libraries
 add_subdirectory(cpr)
+add_subdirectory(doctest)
 add_subdirectory(minhook)
 add_subdirectory(plog)
+
+include(doctest/scripts/cmake/doctest.cmake)
 
 set(LIBSHLWAPI "Shlwapi.lib")
 if(MINGW)
@@ -37,17 +42,19 @@ configure_file(src/version.h.in inc/version.h)
 
 file(GLOB_RECURSE sources CONFIGURE_DEPENDS "src/*.c" "src/*.cpp" "src/*.h" "src/*.hpp")
 
-add_library(OpenHotfixLoader SHARED ${sources} "${CMAKE_CURRENT_BINARY_DIR}/versioninfo.rc")
-target_include_directories(OpenHotfixLoader PRIVATE "${PROJECT_BINARY_DIR}/inc" "src")
+# Root target
+add_library(ohl_root OBJECT ${sources})
+target_include_directories(ohl_root PUBLIC "${PROJECT_BINARY_DIR}/inc" "src")
 
-target_link_libraries(OpenHotfixLoader PUBLIC minhook shlwapi cpr::cpr plog)
+target_link_libraries(ohl_root PUBLIC cpr::cpr doctest::doctest minhook plog shlwapi)
 
 # CMake by default defines NDEBUG in release, we also want the opposite
-target_compile_definitions(OpenHotfixLoader PRIVATE "$<$<CONFIG:DEBUG>:DEBUG>")
-target_compile_definitions(OpenHotfixLoader PRIVATE "UNICODE" "_UNICODE")
+target_compile_definitions(ohl_root PUBLIC "$<$<CONFIG:DEBUG>:DEBUG>")
+target_compile_definitions(ohl_root PUBLIC "$<$<NOT:$<CONFIG:DEBUG>>:DOCTEST_CONFIG_DISABLE>")
+target_compile_definitions(ohl_root PUBLIC "UNICODE" "_UNICODE")
 
 # The precompiled header must be defined AFTER the compile defines
-target_precompile_headers(OpenHotfixLoader PUBLIC "src/pch.c" "src/pch.cpp")
+target_precompile_headers(ohl_root PUBLIC "src/pch.c" "src/pch.cpp")
 
 if(MSVC)
     # Enable Edit and Continue.
@@ -56,13 +63,26 @@ if(MSVC)
     string(REPLACE "/Zi" "" CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
     string(REPLACE "/Zi" "" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
 
-    target_compile_options(OpenHotfixLoader PUBLIC "$<$<CONFIG:DEBUG>:/ZI>")
-    target_link_options(OpenHotfixLoader PUBLIC "/INCREMENTAL")
+    target_compile_options(ohl_root PUBLIC "$<$<CONFIG:DEBUG>:/ZI>")
+    target_link_options(ohl_root PUBLIC "/INCREMENTAL")
+
+    # UTF-8 encoded source files
+    target_compile_options(ohl_root PUBLIC "/utf-8")
 endif()
 
 if (MINGW)
     # Want to link statically into a single dll
-    target_link_options(OpenHotfixLoader PUBLIC "-static")
+    target_link_options(ohl_root PUBLIC "-static")
+endif()
+
+# Targets
+add_library(OpenHotfixLoader SHARED "${CMAKE_CURRENT_BINARY_DIR}/versioninfo.rc")
+target_link_libraries(OpenHotfixLoader PUBLIC ohl_root)
+
+add_executable(ohl_tests)
+target_link_libraries(ohl_tests PUBLIC ohl_root)
+if(MSVC)
+    doctest_discover_tests(ohl_tests WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 endif()
 
 # Postbuild
