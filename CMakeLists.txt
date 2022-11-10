@@ -81,7 +81,9 @@ target_link_libraries(OpenHotfixLoader PUBLIC ohl_root)
 
 add_executable(ohl_tests)
 target_link_libraries(ohl_tests PUBLIC ohl_root)
-doctest_discover_tests(ohl_tests WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+if(MSVC)
+    doctest_discover_tests(ohl_tests WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+endif()
 
 # Postbuild
 set(POSTBUILD_SCRIPT "postbuild")
