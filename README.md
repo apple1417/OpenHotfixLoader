@@ -150,3 +150,12 @@ To get started developing:
    which will drop your debugger session when launching the exe directly - adding this file prevents
    that. Not only does this let you debug from entry, it also unlocks some really useful debugger
    features which you can't access from just an attach (i.e. Visual Studio's Edit and Continue).
+
+## Testing
+This project also contains a number of tests, built into a seperate test target using
+[doctest](https://github.com/doctest/doctest/blob/master/doc/markdown/commandline.md). The test
+executable should be run from the repo root - it looks at some of the files in the `tests` folder,
+including via url (on master).
+
+The test cases mostly just cover the mod loading process, to ensure files are intepreted correctly.
+The only way to test the hooks/hotfix injection is to inject the dll and see if it works manually.
